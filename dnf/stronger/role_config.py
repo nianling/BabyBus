@@ -1,0 +1,43 @@
+# -*- coding:utf-8 -*-
+
+__author__ = "廿陵 <wemean66@gmail.com> (GitHub: @nianling)"
+__version__ = '1.0'
+
+
+from dataclasses import dataclass, asdict, field
+from typing import List, Callable, Optional
+
+
+@dataclass
+class Skill:
+    name: str = field(metadata={"description": "技能名称"})
+    hot_key: Optional[object] = field(default=None, metadata={"description": "技能快捷键"})
+    command: Optional[List[object]] = field(default_factory=list, metadata={"description": "指令"})
+    concurrent: Optional[bool] = field(default=False, metadata={"description": "是否需要同时按住"})
+    cd: Optional[float] = field(default=0, metadata={"description": "技能CD,秒"})
+    recent_use_time: Optional[float] = field(default=0, metadata={"description": "最近使用的时间,秒级时间戳"})
+
+
+@dataclass
+class RoleConfig:
+    """
+    RoleConfig 类用于配置角色的相关属性。
+    """
+
+    name: str = field(metadata={"description": "角色名称"})
+    no: int = field(metadata={"description": "序号"})
+    buffs: List[List[object]] = field(metadata={"description": "buff列表"})
+    candidate_hotkeys: List[object] = field(metadata={"description": "允许释放的快捷栏列表上的技能"})
+    custom_priority_skills: Optional[List[object]] = field(default_factory=list, metadata={"description": "自定义的技能列表"})
+    height: int = field(default=180, metadata={"description": "身高，默认值为180"})
+    fatigue_all: int = field(default=188, metadata={"description": "总疲劳值，默认值为188"})
+    fatigue_reserved: int = field(default=30, metadata={"description": "保留的疲劳值"})
+    attack_center_x: Optional[int] = field(default=0, metadata={"description": "角色攻击中心点距离"})
+    attack_range_x: Optional[int] = field(default=0, metadata={"description": "攻击范围x"})
+    attack_range_y: Optional[int] = field(default=0, metadata={"description": "攻击范围y"})
+    buff_effective: Optional[bool] = field(default=True, metadata={"description": "是否上buff"})
+
+
+# 直接运行这个脚本
+if __name__ == '__main__':
+    pass
