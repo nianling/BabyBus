@@ -314,14 +314,13 @@ def get_allow_directions(crop, cur_row, cur_col):
     found_num = None
     allow_directions = []
     # SSIM查找当前格子，得到允许方向
-    for map_img in map_list:
-        for img_num in map_img['img_num']:
-            img1 = cv.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/game/c_{img_num}.png'))
-            score = compare_images(img1, cur_img)
+    for map_npy in npy_list:
+        for npy in map_npy['img_num']:
+            score = compare_images(npy, cur_img)
             if score >= 0.95:
                 # print('找到了，序号是：', img_num, score)
                 found_num = img_num
-                allow_directions = map_img['direction']
+                allow_directions = map_npy['direction']
                 break
         if found_num:
             break
@@ -398,6 +397,16 @@ map_list = [
     {'img_num': [108, 109, 110, 111], 'direction': ['up', 'left', 'down']},
     {'img_num': [116, 117, 118, 119], 'direction': ['up', 'down', 'left', 'right']}
 ]
+
+# 初始化到内存中
+npy_list = []
+for map_img in map_list:
+    item = {'img_num': [], 'direction': map_img['direction']}
+    for img_num in map_img['img_num']:
+        p = os.path.normpath(f'{config_.project_base_path}/assets/img/game/c_{img_num}.npy')
+        image = np.load(p)
+        item['img_num'].append(image)
+    npy_list.append(item)
 
 # 1.根据蓝标找当前房间位置
 # 2 根据当前位置切图，判断是哪个底图，来判断允许的方向

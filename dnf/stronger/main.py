@@ -984,11 +984,11 @@ def main_script():
                         map_crop = map_util.get_small_map_region_img(img0, rows, cols)
                         cur_row, cur_col = map_util.current_room_index_cropped(map_crop, rows, cols)
                         allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
-                        logger.debug("allow_directions", allow_directions)
+                        logger.debug(f"allow_directions:{allow_directions}")
                         if not allow_directions:
                             cv2.imwrite("no_allow_directions_full0.jpg", img0)
                             cv2.imwrite("no_allow_directions_crop0.jpg", map_crop)
-                            print(f'小地图没找到对应的位置{(rows, cols)},{(cur_row, cur_col)}！！！！')
+                            print(f'小地图没找到对应的位置，行列{(rows, cols)},当前{(cur_row, cur_col)}！！！！')
                             time.sleep(1)
                             img0 = capturer.capture()
                             map_crop = map_util.get_small_map_region_img(img0, rows, cols)
