@@ -52,7 +52,8 @@ from dnf.stronger.player import (
     detect_aolakou,
     detect_daily_1and1_clickable,
     hide_right_bottom_icon,
-    show_right_bottom_icon
+    show_right_bottom_icon,
+    goto_white_map_level,
 )
 from dnf.stronger.role_config import RoleConfig, Skill
 from logger_config import logger
@@ -865,6 +866,8 @@ def main_script():
                         mover.move(target_direction=random_direct)
                     else:
                         logger.warning('未检测到角色,已经结算了')
+                        if sss_exist:
+                            kbu.do_press_with_time(Key.left, 3000, 100)
                     # continue
 
                 # 给角色绘制定位圆点,方便查看
@@ -923,22 +926,35 @@ def main_script():
 
                     if role.attack_center_x:
                         if mover.get_current_direction() is None or "RIGHT" in mover.get_current_direction():
-                            monster_in_range = monster_box[0] > role_attack_center[0] and abs(
-                                role_attack_center[0] - monster_box[0]) < 330 and abs(
-                                role_attack_center[1] - monster_box[1]) < 166
+                            monster_in_range = (monster_box[0] > role_attack_center[0]
+                                                and abs(role_attack_center[0] - monster_box[0]) < 330
+                                                and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                ) or (
+                                                       monster_box[0] < role_attack_center[0]
+                                                       and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x*0.65)
+                                                       and abs(role_attack_center[1] - monster_box[1]) < 100
+                                               )
                         else:
-                            monster_in_range = monster_box[0] < role_attack_center[0] and abs(
-                                role_attack_center[0] - monster_box[0]) < 330 and abs(
-                                role_attack_center[1] - monster_box[1]) < 166
+                            monster_in_range = (monster_box[0] < role_attack_center[0]
+                                                and abs(role_attack_center[0] - monster_box[0]) < 330
+                                                and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                ) or (
+                                                   (monster_box[0] > role_attack_center[0]
+                                                    and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x*0.65)
+                                                    and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                    )
+                                               )
                     else:
                         if mover.get_current_direction() is None or "RIGHT" in mover.get_current_direction():
-                            monster_in_range = monster_box[0] > role_attack_center[0] and abs(
-                                role_attack_center[0] - monster_box[0]) < 250 and abs(
-                                role_attack_center[1] - monster_box[1]) < 160
+                            monster_in_range = (monster_box[0] > role_attack_center[0]
+                                                and abs(role_attack_center[0] - monster_box[0]) < 330
+                                                and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                )
                         else:
-                            monster_in_range = monster_box[0] < role_attack_center[0] and abs(
-                                role_attack_center[0] - monster_box[0]) < 250 and abs(
-                                role_attack_center[1] - monster_box[1]) < 160
+                            monster_in_range = (monster_box[0] < role_attack_center[0]
+                                                and abs(role_attack_center[0] - monster_box[0]) < 330
+                                                and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                )
 
                     # if fought_boss:
                     #     monster_in_range = abs(hero_xywh[0] - monster_box[0]) < 300 and abs(hero_xywh[1] - monster_box[1]) < 200
@@ -1098,10 +1114,16 @@ def main_script():
                         if stuck_room_idx is not None:
                             # todo 除歼灭不存在 跳过材料时无卡住的逻辑
                             logger.error("等三秒直接跳过材料")
-                            time.sleep(3)
+                            time.sleep(1)
                             # 可能没过去，随便走两步，(todo 根据角色位置，决定往哪里走)
-                            kbu.do_press_with_time(Key.left, 2, 100)
-                            kbu.do_press_with_time(Key.up, 2, 100)
+                            if next_room_direction == '右':
+                                kbu.do_press_with_time(Key.left, 1000, 100)
+                            if next_room_direction == '左':
+                                kbu.do_press_with_time(Key.right, 1000, 100)
+                            if next_room_direction == '上':
+                                kbu.do_press_with_time(Key.down, 1000, 100)
+                            if next_room_direction == '下':
+                                kbu.do_press_with_time(Key.up, 1000, 100)
                             # stuck_room_idx = None
                             # room_idx_list.clear()
                         continue
@@ -1191,17 +1213,17 @@ def main_script():
                         mover._release_all_keys()
 
                         # 调整方向,面对怪
-                        if hero_xywh[0] - monster_box[0] > 120:
-                            logger.debug('面对怪,朝左')
+                        if hero_xywh[0] - monster_box[0] > 100:
+                            logger.debug('面对怪,朝左，再放技能')
                             kbu.do_press(Key.left)
-                        elif monster_box[0] > hero_xywh[0] > 120:
-                            logger.debug('面对怪,朝右')
+                        elif monster_box[0] > hero_xywh[0] > 100:
+                            logger.debug('面对怪,朝右，再放技能')
                             kbu.do_press(Key.right)
+                        time.sleep(0.05)
 
                         # 推荐技能
                         skill_name = suggest_skill(role, img0)
 
-                        # kbu.do_press(skill_name)
                         cast_skill(skill_name)
                         time.sleep(0.9)
                         continue
@@ -1690,7 +1712,7 @@ logger.debug(f'总计耗时: {time_delta.total_seconds() / 60} 分钟')
 # 脚本正常执行完,不是被组合键中断的,并且配置了退出游戏
 if not stop_be_pressed and quit_game_after_finish:
     logger.debug("正在退出游戏...")
-    clik_to_quit_game(x, y)
+    clik_to_quit_game(handle, x, y)
     time.sleep(5)
 
 logger.debug("python主线程已停止.....")

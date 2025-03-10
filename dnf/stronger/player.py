@@ -184,7 +184,7 @@ def teleport_to_sailiya(x, y):
     kbu.do_press_with_time(Key.down, 140, 200)
 
 
-def clik_to_quit_game(x, y):
+def clik_to_quit_game(handle, x, y):
     """
     结束游戏
     """
@@ -199,15 +199,20 @@ def clik_to_quit_game(x, y):
     mu.do_click(Button.left)
     time.sleep(0.3)
 
-    # 游戏结束按钮（没有到期的） # todo 可能存在的到期提醒 需要识别位置（按钮模板匹配），按钮位置靠下了 （566，532）
-    # mu.do_smooth_move_to(x + 566, y + 445)
-    mu.do_smooth_move_to(x + 566, y + 532)
+    full_screen = window_utils.capture_window_BGRX(handle)
+    gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
+    template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/quit_game.png'), cv2.IMREAD_COLOR)
+    template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
+    matches = match_template(gray_screenshot, template_again_gray, threshold=0.9)
+    top_left, bottom_right = matches[0]
+    x1, y1 = top_left
+    x2, y2 = bottom_right
+    center_x = int((x1 + x2) / 2)
+    center_y = int((y1 + y2) / 2)
+    mu.do_move_to(x + center_x, y + center_y)
     time.sleep(0.3)
     mu.do_click(Button.left)
     time.sleep(0.3)
-
-    kbu.do_press(Key.space)
-    time.sleep(5)
 
 
 # todo todo 截好图传参(先移动鼠标,)，判断图片
@@ -428,7 +433,6 @@ def goto_white_map(x, y):
     kbu.do_press(Key.right)
     time.sleep(0.1)
 
-
     # mu.do_smooth_move_to(x + 357, y + 106)  # 妖怪追踪
     # mu.do_smooth_move_to(x + 551, y + 176)  # 妖气歼灭
     mu.do_smooth_move_to(x + 620, y + 305)  # 跌宕群岛
@@ -450,6 +454,55 @@ def goto_white_map(x, y):
     kbu.do_press(Key.right)
     time.sleep(0.2)
 
+    # 确认进入
+    mu.do_click(Button.left)
+    time.sleep(0.2)
+
+    time.sleep(2)
+
+
+def goto_white_map_level(x, y, press_cnt=2):
+    """
+    去白图，（跌宕群岛）
+    :param press_cnt:
+    :param x:
+    :param y:
+    :return:
+    """
+
+    # 有可能本来就选中了，需要重置并选级别
+    # 先重置可能得级别
+    kbu.do_press(Key.left)
+    time.sleep(0.15)
+    kbu.do_press(Key.left)
+    time.sleep(0.15)
+    kbu.do_press(Key.left)
+    time.sleep(0.15)
+    kbu.do_press(Key.left)
+    time.sleep(0.15)
+    for i in range(press_cnt):
+        kbu.do_press(Key.right)
+        time.sleep(0.15)
+
+    # mu.do_smooth_move_to(x + 357, y + 106)  # 妖怪追踪
+    # mu.do_smooth_move_to(x + 551, y + 176)  # 妖气歼灭
+    mu.do_smooth_move_to(x + 620, y + 305)  # 跌宕群岛
+    # mu.do_smooth_move_to(x + 835, y + 309)  # 萧索的回廊
+    mu.do_click(Button.left)
+    time.sleep(0.5)
+
+    # 先重置可能得级别
+    kbu.do_press(Key.left)
+    time.sleep(0.2)
+    kbu.do_press(Key.left)
+    time.sleep(0.2)
+    kbu.do_press(Key.left)
+    time.sleep(0.2)
+    kbu.do_press(Key.left)
+    time.sleep(0.2)
+    for i in range(press_cnt):
+        kbu.do_press(Key.right)
+        time.sleep(0.15)
 
     # 确认进入
     mu.do_click(Button.left)
