@@ -722,41 +722,48 @@ def main_script():
             # todo xxxxxxxxxxxxxx
             # cv2.imwrite('img03.jpg', img0)
 
+            # 分析小地图
             cols, rows = 0, 0
-            # 分析小地图的行列
-            try:
-                cols = map_util.get_colum_count(img0)
-                rows = map_util.get_row_count(img0)
-            except Exception as e:
-                logger.error("分析小地图的行列出错了1,暂停一秒继续", rows, cols)
-                logger.error(e)
-                time.sleep(2)
-                cv2.imwrite('errorDetectMap1.jpg', img0)
-                img0 = capturer.capture()
-                cols = map_util.get_colum_count(img0)
-                rows = map_util.get_row_count(img0)
+            cur_row, cur_col = 0, 0
+            map_crop = None
+            boss_room = (-1, -1)
+            current_room = (-1, -1)
 
-            if not (rows and cols):
-                logger.error("分析小地图的行列出错了2,暂停一秒继续", rows, cols)
-                cv2.imwrite('errorDetectMap21.jpg', img0)
-                time.sleep(2)
-                img0 = capturer.capture()
-                cols = map_util.get_colum_count(img0)
-                rows = map_util.get_row_count(img0)
+            map_error_cnt = 0
+            analyse_map_error = True
+            while analyse_map_error:
+                try:
+                    img0 = capturer.capture()
 
-            logger.error("分析小地图的行列{},{}", rows, cols)
-            # 裁剪小地图区域
-            map_crop = map_util.get_small_map_region_img(img0, rows, cols)
-            # cv2.imwrite('smallMap1.jpg', map_crop)
+                    # 分析小地图的行列
+                    cols = map_util.get_colum_count(img0)
+                    rows = map_util.get_row_count(img0)
+                    logger.error("分析小地图的行列{},{}", rows, cols)
 
-            # 获取boss房间位置，0基
-            boss_room = map_util.get_boss_from_crop(map_crop, rows, cols)
-            # boss房间 = map_util.找BOOS房间(img0)
-            logger.info('boss房间是 {}', boss_room)
-            # 当前房间 = map_util.根据蓝标找当前房间位置(img0)
-            current_room = map_util.current_room_index_cropped(map_crop, rows, cols)  # 实际上没有用，只是打印看一下位置
-            logger.info('当前房间是 {}', current_room)
-            cur_row, cur_col = current_room
+                    # 裁剪小地图区域
+                    map_crop = map_util.get_small_map_region_img(img0, rows, cols)
+
+                    # 获取boss房间位置，0基
+                    boss_room = map_util.get_boss_from_crop(map_crop, rows, cols)
+                    logger.info('boss房间是 {}', boss_room)
+                    current_room = map_util.current_room_index_cropped(map_crop, rows, cols)  # 实际上没有用，只是打印看一下位置
+                    logger.info('当前房间是 {}', current_room)
+                    cur_row, cur_col = current_room
+                except Exception as e:
+                    logger.error(e)
+                    traceback.print_exc()
+
+                analyse_map_error = boss_room is None or current_room is None or boss_room == (-1, -1) or current_room == (-1, -1)
+                if analyse_map_error:
+                    map_error_cnt = map_error_cnt + 1
+                    cv2.imwrite(f'errorDetectMap{map_error_cnt}.jpg', img0)
+                    logger.error(f"分析小地图的行列，第 {map_error_cnt} 次出错,行列是 {rows} , {cols}")
+                    logger.error("暂停2秒继续重试！！")
+                    time.sleep(2)
+
+                if analyse_map_error and map_error_cnt > 20:
+                    logger.error("分析小地图的行列多次出错了 废了！！！")
+                    break
 
             allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
             # unexplored_directions = map_util.all_question_mark_room_cropped(map_crop, rows, cols, cur_row, cur_col)
