@@ -849,7 +849,7 @@ def main_script():
                     logger.warning("todo 有神秘商店！！！！！！！")
                     logger.warning("todo 有神秘商店！！！！！！！")
 
-                if sss_exist or continue_exist:
+                if sss_exist or continue_exist or shop_exist:
                     logger.warning(f"出现翻拍{sss_exist}，再次挑战了{continue_exist}")
                     sss_appeared = True
 
@@ -873,7 +873,7 @@ def main_script():
                         mover.move(target_direction=random_direct)
                     else:
                         logger.warning('未检测到角色,已经结算了')
-                        if sss_exist:
+                        if sss_exist or continue_exist or shop_exist:
                             kbu.do_press_with_time(Key.left, 3000, 100)
                     # continue
 
@@ -1096,9 +1096,9 @@ def main_script():
 
                 # 截图展示前的处理完毕,进行显示
                 if show:
-                    # img0 = cv2.resize(img0, (534, 300))
+                    # img0 = cv2.resize(img0, (756, 425))
                     # cv2.namedWindow('window', cv2.WINDOW_NORMAL)
-                    # cv2.resizeWindow('window', 534, 300)
+                    # cv2.resizeWindow('window', 756, 425)
 
                     # result_queue.put(img0)
 
