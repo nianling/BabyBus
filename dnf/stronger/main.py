@@ -1124,13 +1124,17 @@ def main_script():
                             time.sleep(1)
                             # 可能没过去，随便走两步，(todo 根据角色位置，决定往哪里走)
                             if next_room_direction == '右':
-                                kbu.do_press_with_time(Key.left, 1000, 100)
+                                logger.error("先向左走两步")
+                                kbu.do_press_with_time(Key.left, 1600, 100)
                             if next_room_direction == '左':
-                                kbu.do_press_with_time(Key.right, 1000, 100)
+                                logger.error("先向右走两步")
+                                kbu.do_press_with_time(Key.right, 1600, 100)
                             if next_room_direction == '上':
-                                kbu.do_press_with_time(Key.down, 1000, 100)
+                                logger.error("先向下走两步")
+                                kbu.do_press_with_time(Key.down, 1600, 100)
                             if next_room_direction == '下':
-                                kbu.do_press_with_time(Key.up, 1000, 100)
+                                logger.error("先向上走两步")
+                                kbu.do_press_with_time(Key.up, 1600, 100)
                             # stuck_room_idx = None
                             # room_idx_list.clear()
                         continue
