@@ -591,7 +591,7 @@ def detect_aolakou(full_screen):
     识别"再次挑战"按钮的情况,按钮是否识别到,文本是否识别到,是否可以点击
     """
     gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
-    template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/act_aolakou1.jpg'),
+    template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/activity/act_aolakou1.jpg'),
                                 cv2.IMREAD_COLOR)
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
     matches = match_template(gray_screenshot, template_again_gray, threshold=0.8)
@@ -599,7 +599,7 @@ def detect_aolakou(full_screen):
         print("有普通奥拉扣！！")
         return True
 
-    template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/act_aolakou2.jpg'),
+    template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img//activity/act_aolakou2.jpg'),
                                 cv2.IMREAD_COLOR)
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
     matches = match_template(gray_screenshot, template_again_gray, threshold=0.8)
