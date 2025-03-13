@@ -49,7 +49,6 @@ from dnf.stronger.player import (
     goto_white_map,
     goto_zhuizong,
     goto_jianmie,
-    detect_aolakou,
     detect_daily_1and1_clickable,
     hide_right_bottom_icon,
     show_right_bottom_icon,
@@ -1451,18 +1450,8 @@ def main_script():
                     mover._release_all_keys()
                     mover._release_all_keys()
 
-                    aolakou = detect_aolakou(results[0].orig_img)
-                    # todo 前多少角色买奥拉扣
-                    if aolakou and role.no <= 14:
-                        mu.do_move_to(x + 337, y + 209)
-                        time.sleep(0.2)
-                        mu.do_click(Button.left)
-                        time.sleep(0.2)
-                        mu.do_click(Button.left)
-                        time.sleep(0.2)
-
                     # 如果商店开着,需要esc关闭
-                    if shop_exist or aolakou:
+                    if shop_exist:
                         kbu.do_press(Key.esc)
                         logger.warning("商店开着,需要esc关闭")
                         time.sleep(0.1)
