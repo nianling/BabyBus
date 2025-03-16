@@ -312,7 +312,7 @@ def get_allow_directions(crop, cur_row, cur_col):
     # cv.imwrite("cur_grid.jpg",cur_img)
 
     score_list = []
-    found_num = None
+    found_num = False
     allow_directions = []
     # SSIM查找当前格子，得到允许方向
     for map_npy in npy_list:
@@ -324,6 +324,7 @@ def get_allow_directions(crop, cur_row, cur_col):
                 # print('找到了，序号是：', num, score)
                 # found_num = num
                 found_num = npy
+                found_num = True
                 allow_directions = map_npy['direction']
                 break
         if found_num:
