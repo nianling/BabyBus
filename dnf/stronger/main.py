@@ -333,11 +333,12 @@ def suggest_skill(role: RoleConfig, img0): # todo 蓝色的
         elif isinstance(s, list):
             return s
         elif isinstance(s, Skill):
-            t = time.time()
-            if s.cd and (t - s.cd > s.recent_use_time + 0.1):
-                logger.debug(f"Skill:{s.name} 已恢复cd(计算)")
-                s.recent_use_time = t  # 更新最近使用时间
-                return s
+            if s.cd:
+                t = time.time()
+                if t - s.cd > s.recent_use_time + 0.1:
+                    logger.debug(f"Skill:{s.name} 已恢复cd(计算)")
+                    s.recent_use_time = t  # 更新最近使用时间
+                    return s
             elif len(s.command) == 1 or s.hot_key is not None:
                 sname = s.hot_key if s.hot_key is not None else s.command[0]
                 if skill_util.skill_ready_warm_colors(sname, img0):
