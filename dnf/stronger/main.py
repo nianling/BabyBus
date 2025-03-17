@@ -1047,7 +1047,7 @@ def main_script():
                             cur_row, cur_col = map_util.current_room_index_cropped(map_crop, rows, cols)
                             allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
 
-                        next_room_direction = finder.get_next_direction((cur_row, cur_col), allow_directions, [])
+                        next_room_direction = finder.get_next_direction((cur_row, cur_col), allow_directions)
                         print("next_room_direction", next_room_direction)
 
                         if 'up' == next_room_direction:
@@ -1536,7 +1536,7 @@ def main_script():
                                 cur_row, cur_col = map_util.current_room_index_cropped(map_crop, rows, cols)
                                 allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
 
-                            next_room_direction = finder.get_next_direction((cur_row, cur_col), allow_directions, allow_directions)
+                            next_room_direction = finder.get_next_direction((cur_row, cur_col), allow_directions)
                             print("计算方向2", next_room_direction)
                             logger.warning(f"除了角色什么也没识别到,当前房间: {cur_row},{cur_col},允许方向: {allow_directions}, 下个方向: {next_room_direction}")
                             direct = next_room_direction.upper()

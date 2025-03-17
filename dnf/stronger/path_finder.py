@@ -12,8 +12,9 @@ class PathFinder:
         self.target_pos = target_pos
         self.visited = {}  # 记录已访问格子的联通方向
         self.path_stack = []  # 用于回溯的路径栈
+        self.visited_diff_cnt = {}
 
-    def get_next_direction(self, current_pos, directions, nothing):
+    def get_next_direction(self, current_pos, directions):
         """
         核心决策逻辑：全局搜索所有未探索方向，选择最优路径
         :param current_pos: 当前坐标 (row, col)
@@ -31,7 +32,15 @@ class PathFinder:
             # 更新联通方向
             if not self.visited[current_pos]:
                 self.visited[current_pos] = directions
+            else:
+                if self.visited[current_pos] != directions:
+                    if current_pos not in self.visited_diff_cnt:
+                        self.visited_diff_cnt[current_pos] = 0
+                    self.visited_diff_cnt[current_pos] = self.visited_diff_cnt[current_pos] + 1
 
+                    if self.visited_diff_cnt[current_pos] > 8:
+                        self.visited_diff_cnt[current_pos] = 0
+                        self.visited[current_pos] = directions
         # 收集全局候选方向
         candidates = self._collect_all_candidates()
 
