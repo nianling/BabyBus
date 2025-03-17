@@ -323,7 +323,7 @@ def get_allow_directions(crop, cur_row, cur_col):
             if score >= 0.95:
                 # print('找到了，序号是：', num, score)
                 # found_num = num
-                found_num = npy
+                # found_num = npy
                 found_num = True
                 allow_directions = map_npy['direction']
                 break
@@ -332,7 +332,8 @@ def get_allow_directions(crop, cur_row, cur_col):
 
     if not found_num:
         highest_score = max(score_list, key=lambda x: x[1])
-        allow_directions = highest_score[0]
+        if highest_score[1] > 0.85:
+            allow_directions = highest_score[0]
 
     # s = time.time()
     # print(f'找到序号{found_num}, 允许方向：{allow_directions}')
