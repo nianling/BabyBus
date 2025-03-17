@@ -358,6 +358,30 @@ def suggest_skill(role: RoleConfig, img0): # todo 蓝色的
     return skill_name
 
 
+def suggest_skill_powerful(role: RoleConfig, img0):  # todo 蓝色的
+    for s in role.powerful_skills:
+        if isinstance(s, str) or isinstance(s, Key):
+            if skill_util.skill_ready_warm_colors(s, img0):
+                logger.debug(f"字符串技能:{s} 已恢复cd(识别)")
+                return s
+        elif isinstance(s, list):
+            return s
+        elif isinstance(s, Skill):
+            if s.cd:
+                t = time.time()
+                if t - s.cd > s.recent_use_time + 0.1:
+                    logger.debug(f"Skill:{s.name} 已恢复cd(计算)")
+                    s.recent_use_time = t  # 更新最近使用时间
+                    return s
+            elif len(s.command) == 1 or s.hot_key is not None:
+                sname = s.hot_key if s.hot_key is not None else s.command[0]
+                if skill_util.skill_ready_warm_colors(sname, img0):
+                    logger.debug(f"Skill:{s.name} 已恢复cd(识别)")
+                    return s
+            logger.debug('未恢复cd,再找')
+    return None
+
+
 def cast_skill(s):
     if isinstance(s, str) or isinstance(s, Key):
         kbu.do_press(s)
@@ -784,6 +808,7 @@ def main_script():
             fought_boss = False  # 遭遇boss了
             sss_appeared = False  # 已经结算了
             door_absence_time = 0  # 什么也没识别到的时间(没识别到门)
+            boss_door_appeared = False
 
             # frame = 0
             while True:  # 循环打怪过图
@@ -852,6 +877,10 @@ def main_script():
                 if sss_exist or continue_exist or shop_exist:
                     logger.warning(f"出现翻拍{sss_exist}，再次挑战了{continue_exist}")
                     sss_appeared = True
+                if door_boss_xywh_list:
+                    logger.warning(f"出现boss门了")
+                    boss_door_appeared = True
+
 
                 if hero_xywh:
                     fq.enqueue((hero_xywh[0], hero_xywh[1]))
@@ -1232,9 +1261,12 @@ def main_script():
                             kbu.do_press(Key.right)
                         time.sleep(0.05)
 
-                        # 推荐技能
-                        skill_name = suggest_skill(role, img0)
-
+                        skill_name = None
+                        if role.powerful_skills and boss_door_appeared:
+                            skill_name = suggest_skill_powerful(role, img0)
+                        if skill_name is None:
+                            # 推荐技能
+                            skill_name = suggest_skill(role, img0)
                         cast_skill(skill_name)
                         time.sleep(0.9)
                         continue

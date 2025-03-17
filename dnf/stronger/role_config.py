@@ -36,6 +36,7 @@ class RoleConfig:
     attack_range_x: Optional[int] = field(default=0, metadata={"description": "攻击范围x"})
     attack_range_y: Optional[int] = field(default=0, metadata={"description": "攻击范围y"})
     buff_effective: Optional[bool] = field(default=True, metadata={"description": "是否上buff"})
+    powerful_skills: Optional[List[object]] = field(default_factory=list, metadata={"description": "强力技能列表"})
 
 
 # 直接运行这个脚本
