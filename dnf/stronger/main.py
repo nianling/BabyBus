@@ -53,6 +53,7 @@ from dnf.stronger.player import (
     hide_right_bottom_icon,
     show_right_bottom_icon,
     goto_white_map_level,
+    buy_from_mystery_shop,
 )
 from dnf.stronger.role_config import RoleConfig, Skill
 from logger_config import logger
@@ -447,7 +448,7 @@ def analyse_det_result(results, hero_height, img0):
 
             if names[cls] == "boss":
                 # xywh[1] += b_h
-                xywh[1] = xyxy[3]
+                xywh[1] = xyxy[3] - 20
 
                 boss_xywh_list.append(xywh)
 
@@ -458,7 +459,7 @@ def analyse_det_result(results, hero_height, img0):
 
             if names[cls] == "elite-monster":
                 # xywh[1] += em_h
-                xywh[1] = xyxy[3]
+                xywh[1] = xyxy[3] - 20
 
                 elite_monster_xywh_list.append(xywh)
 
@@ -780,17 +781,18 @@ def main_script():
                 analyse_map_error = boss_room is None or current_room is None or boss_room == (-1, -1) or current_room == (-1, -1)
                 if analyse_map_error:
                     map_error_cnt = map_error_cnt + 1
-                    cv2.imwrite(f'errorDetectMap{map_error_cnt}.jpg', img0)
-                    logger.error(f"分析小地图的行列，第 {map_error_cnt} 次出错,行列是 {rows} , {cols}")
+                    cv2.imwrite(f'errorDetectMap_init_{map_error_cnt}.jpg', img0)
+                    logger.error(f"分析小地图的行列init，第 {map_error_cnt} 次出错,行列是 {rows} , {cols}")
                     logger.error("暂停2秒继续重试！！")
                     time.sleep(2)
+                else:
+                    map_error_cnt = 0
 
                 if analyse_map_error and map_error_cnt > 20:
-                    logger.error("分析小地图的行列多次出错了 废了！！！")
+                    logger.error("分析小地图的行列init多次出错了 废了！！！")
                     break
 
             allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
-            # unexplored_directions = map_util.all_question_mark_room_cropped(map_crop, rows, cols, cur_row, cur_col)
 
             # 初始化
             finder = PathFinder(rows, cols, boss_room)
@@ -888,6 +890,7 @@ def main_script():
                     if hero_pos_is_stable and not sss_appeared and stuck_room_idx is None:
                         random_direct = random.choice(random.choice([kbu.single_direct, kbu.double_direct]))
                         logger.warning('可能卡住不能移动了[{}],随机跑个方向看看-->{}', hero_xywh, random_direct)
+                        time.sleep(0.4)
                         fq.clear()  # 重置历史记录
                         room_idx_list.clear()
                         stuck_room_idx = None
@@ -902,7 +905,7 @@ def main_script():
                         mover.move(target_direction=random_direct)
                     else:
                         logger.warning('未检测到角色,已经结算了')
-                        if sss_exist or continue_exist or shop_exist:
+                        if not collect_loot_pressed and (sss_exist or continue_exist or shop_exist):
                             kbu.do_press_with_time(Key.left, 3000, 100)
                     # continue
 
@@ -1009,61 +1012,68 @@ def main_script():
                 wait_for_next_room = (hero_xywh
                                       and ((door_xywh_list or door_boss_xywh_list) and not monster_xywh_list and not elite_monster_xywh_list and not boss_xywh_list and not loot_xywh_list and not gold_xywh_list)
                                       and not sss_appeared)
-                next_room_direction = '右'
+                next_room_direction = None
                 door_box = None
                 door_in_range = False
                 if wait_for_next_room:
 
                     door_absence_time = 0
                     # 根据小地图分析 下一个房间所在的方向(上校左右)
-                    # next_room_direction = map_util.get_room_direction(img0)
                     try:
-                        # current_room, next_room_direction = map_util.get_room_direction_inflexible(img0, boss_room)
-                        # todo 下个方向 = map_util.计算下个方向()
-                        # cur_row, cur_col = map_util.current_room_index_cropped(map_crop, rows, cols)
-                        # current_room = (cur_row, cur_col)
+                        map_door_error_cnt = 0
+                        analyse_map_door_error = True
+                        while analyse_map_door_error:
+                            allow_directions = []
+                            in_boss_room = False
+                            try:
+                                img00 = capturer.capture()
 
-                        # boss_room = map_util.get_boss_from_crop(map_crop, rows, cols)
-                        # print('current_room:', current_room)
-                        # allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
-                        # unexplored_directions = map_util.all_question_mark_room_cropped(map_crop, rows, cols, cur_row, cur_col)
-                        # print("unexplored_directions", unexplored_directions)
-                        # print("allow_directions", allow_directions)
-                        # if not unexplored_directions:
-                        #     # 如果没有未探索过的房间,就用允许方向
-                        #     unexplored_directions = allow_directions
+                                # 裁剪小地图区域
+                                map_crop = map_util.get_small_map_region_img(img00, rows, cols)
+                                # 当前房间位置
+                                current_room = map_util.current_room_index_cropped(map_crop, rows, cols)
+                                logger.info('当前房间是 {}', current_room)
+                                cur_row, cur_col = current_room
 
-                        map_crop = map_util.get_small_map_region_img(img0, rows, cols)
-                        cur_row, cur_col = map_util.current_room_index_cropped(map_crop, rows, cols)
-                        allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
-                        logger.debug(f"allow_directions:{allow_directions}")
-                        if not allow_directions:
-                            cv2.imwrite("no_allow_directions_full0.jpg", img0)
-                            cv2.imwrite("no_allow_directions_crop0.jpg", map_crop)
-                            print(f'小地图没找到对应的位置，行列{(rows, cols)},当前{(cur_row, cur_col)}！！！！')
-                            time.sleep(1)
-                            img0 = capturer.capture()
-                            map_crop = map_util.get_small_map_region_img(img0, rows, cols)
-                            cur_row, cur_col = map_util.current_room_index_cropped(map_crop, rows, cols)
-                            allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
+                                if boss_door_appeared and current_room == (-1, -1):
+                                    in_boss_room = True
 
-                        next_room_direction = finder.get_next_direction((cur_row, cur_col), allow_directions)
-                        print("next_room_direction", next_room_direction)
+                                allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
+                                logger.debug(f"allow_directions:{allow_directions}")
+                            except Exception as e:
+                                logger.error(e)
+                                traceback.print_exc()
 
-                        if 'up' == next_room_direction:
-                            next_room_direction = '上'
-                        if 'down' == next_room_direction:
-                            next_room_direction = '下'
-                        if 'left' == next_room_direction:
-                            next_room_direction = '左'
-                        if 'right' == next_room_direction:
-                            next_room_direction = '右'
+                            analyse_map_door_error = not allow_directions
+                            if analyse_map_door_error:
+                                if in_boss_room:
+                                    logger.error("在boss房间分析出错，无视")
+                                    break
+                                map_door_error_cnt = map_door_error_cnt + 1
+                                # cv2.imwrite(f'errorDetectMap_door_{map_door_error_cnt}.jpg', map_crop)
+                                logger.error(f"分析小地图的行列door，第 {map_door_error_cnt} 次出错,行列是 {rows} , {cols}")
+                                logger.error("暂停2秒继续重试！！")
+                                time.sleep(2)
+                            else:
+                                map_door_error_cnt = 0
+                                next_room_direction = finder.get_next_direction((cur_row, cur_col), allow_directions)
+                                print("next_room_direction", next_room_direction)
+                                if 'up' == next_room_direction:
+                                    next_room_direction = '上'
+                                if 'down' == next_room_direction:
+                                    next_room_direction = '下'
+                                if 'left' == next_room_direction:
+                                    next_room_direction = '左'
+                                if 'right' == next_room_direction:
+                                    next_room_direction = '右'
+
+                            if analyse_map_door_error and map_door_error_cnt > 5:
+                                logger.error("分析小地图的行列door多次出错了 废了！！！")
+                                break
 
                         if next_room_direction is None or current_room is None:
                             # 没正确的分析出小地图信息,跳过
                             logger.warning('没正确的分析出小地图信息,跳过')
-                            # boss_room = map_util.get_boss_room(window_utils.capture_window_BGRX(handle))
-                            # logger.info('boss房间是 {}', boss_room)
                             continue
                     except Exception as e:
                         logger.warning(f'小地图分析异常报错,跳过.{e}')
@@ -1080,6 +1090,7 @@ def main_script():
                             (door_xywh_list or door_boss_xywh_list)  and not monster_xywh_list and not elite_monster_xywh_list and not boss_xywh_list and not loot_xywh_list and not gold_xywh_list)
                     elif stuck_room_idx is not None and stuck_room_idx != current_room:  # 已经被卡住了，且不在被卡房间，（出去了，置空）
                         stuck_room_idx = None
+                        room_idx_list.enqueue(current_room)  # 记录识别的房间位置
                     else:  # 还没有被卡住
                         room_idx_list.enqueue(current_room)  # 记录识别的房间位置
                         room_is_same = room_idx_list.room_is_same(min_size=80)
@@ -1093,8 +1104,7 @@ def main_script():
                     # 找这个方向上最远的门
                     door_box = find_door_by_position(door_xywh_list + door_boss_xywh_list, next_room_direction)
 
-                    door_in_range = abs(door_box[1] - hero_xywh[1]) < th_y * 2 and abs(
-                        door_box[0] - hero_xywh[0]) < th_x  # todo 门的范围问题
+                    door_in_range = abs(door_box[1] - hero_xywh[1]) < th_y * 2 and abs(door_box[0] - hero_xywh[0]) < th_x  # todo 门的范围问题
                     if show and door_box:
                         # 给目标门口画一个点
                         cv2.circle(img0, (int(door_box[0]), int(door_box[1])), 1, color3, 3)
@@ -1154,16 +1164,16 @@ def main_script():
                             # 可能没过去，随便走两步，(todo 根据角色位置，决定往哪里走)
                             if next_room_direction == '右':
                                 logger.error("先向左走两步")
-                                kbu.do_press_with_time(Key.left, 1600, 100)
+                                kbu.do_press_with_time(Key.left, 800, 0)
                             if next_room_direction == '左':
                                 logger.error("先向右走两步")
-                                kbu.do_press_with_time(Key.right, 1600, 100)
+                                kbu.do_press_with_time(Key.right, 800, 0)
                             if next_room_direction == '上':
                                 logger.error("先向下走两步")
-                                kbu.do_press_with_time(Key.down, 1600, 100)
+                                kbu.do_press_with_time(Key.down, 800, 0)
                             if next_room_direction == '下':
                                 logger.error("先向上走两步")
-                                kbu.do_press_with_time(Key.up, 1600, 100)
+                                kbu.do_press_with_time(Key.up, 800, 0)
                             # stuck_room_idx = None
                             # room_idx_list.clear()
                         continue
@@ -1350,19 +1360,15 @@ def main_script():
                         # 不管了,全部释放掉
                         mover._release_all_keys()
 
-                        # time.sleep(2)
-
-                        # kbu.do_press(dnf.Key_collect_loot)
                         collect_loot_pressed = True
                         collect_loot_pressed_time = time.time()
-
 
                         executor.submit(lambda: (
                             logger.warning("预先移动物品到脚下"),
                             time.sleep(2.1),
                             kbu.do_press(dnf.Key_collect_loot),
                             time.sleep(0.1),
-                            kbu.do_press_with_time('x', 2000, 50),
+                            kbu.do_press_with_time('x', 4000 if game_mode == 4 else 2000, 50),
                             logger.warning("预先长按x 按完x了"),
                         ))
 
@@ -1481,7 +1487,14 @@ def main_script():
                 if continue_exist:
                     # 不管了,全部释放掉
                     mover._release_all_keys()
-                    mover._release_all_keys()
+
+                    # 神秘商店
+                    if shop_mystery_exist:
+                        buy_from_mystery_shop(img0, x, y)
+                        kbu.do_press(Key.esc)
+                        logger.warning("商店开着,需要esc关闭")
+                        time.sleep(0.1)
+                        continue
 
                     # 如果商店开着,需要esc关闭
                     if shop_exist:
@@ -1505,7 +1518,7 @@ def main_script():
                             collect_loot_pressed = True
                             collect_loot_pressed_time = time.time()
                             time.sleep(0.1)
-                            kbu.do_press_with_time('x', 2000, 50)
+                            kbu.do_press_with_time('x', 4000 if game_mode == 4 else 2000, 50)
                             logger.warning("中间长按x 按完x了")
                         continue
                     continue
@@ -1526,9 +1539,10 @@ def main_script():
                             map_crop = map_util.get_small_map_region_img(img0, rows, cols)
                             cur_row, cur_col = map_util.current_room_index_cropped(map_crop, rows, cols)
                             allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
+                            logger.warning(f"未识别到尝试allow_directions:{allow_directions}")
                             if not allow_directions:
-                                cv2.imwrite("no_allow_directions_full1.jpg", img0)
-                                cv2.imwrite("no_allow_directions_crop1.jpg", map_crop)
+                                # cv2.imwrite("no_allow_directions_full1.jpg", img0)
+                                # cv2.imwrite("no_allow_directions_crop1.jpg", map_crop)
                                 print(f'小地图没找到对应的图{(rows, cols)},{(cur_row, cur_col)}！！！！')
                                 time.sleep(1)
                                 img0 = capturer.capture()
@@ -1541,16 +1555,6 @@ def main_script():
                             logger.warning(f"除了角色什么也没识别到,当前房间: {cur_row},{cur_col},允许方向: {allow_directions}, 下个方向: {next_room_direction}")
                             direct = next_room_direction.upper()
 
-                            # current_room, next_room_direction = map_util.get_room_direction_inflexible(img0, boss_room)
-                            # if next_room_direction is not None:
-                            #     if next_room_direction == "上":
-                            #         direct = "UP"
-                            #     elif next_room_direction == "下":
-                            #         direct = "DOWN"
-                            #     elif next_room_direction == "左":
-                            #         direct = "LEFT"
-                            #     elif next_room_direction == "右":
-                            #         direct = "RIGHT"
                         except Exception as e:
                             print(f"捕获到异常: {e}")
                             traceback.print_exc()
@@ -1584,7 +1588,7 @@ def main_script():
                     time.sleep(0.1),
                     kbu.do_press(dnf.Key_collect_loot),
                     time.sleep(0.1),
-                    kbu.do_press_with_time('x', 1800, 0),
+                    kbu.do_press_with_time('x', 4000 if game_mode == 4 else 2000, 0),
                     logger.warning("最后长按x 按完x了")
                 ))
                 need_wait_collect_finish = True

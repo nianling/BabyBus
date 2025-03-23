@@ -599,7 +599,7 @@ def detect_aolakou(full_screen):
         print("有普通奥拉扣！！")
         return True
 
-    template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img//activity/act_aolakou2.jpg'),
+    template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/activity/act_aolakou2.jpg'),
                                 cv2.IMREAD_COLOR)
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
     matches = match_template(gray_screenshot, template_again_gray, threshold=0.8)
@@ -647,3 +647,28 @@ def show_right_bottom_icon(full_screen, x, y):
         pass
     else:
         mu.do_move_and_click(x + 744, y + 577)
+
+
+def buy_from_mystery_shop(full_screen, x, y):
+    """
+    神秘商店购买
+    """
+    logger.debug('出现神秘商店！')
+    gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
+    template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/ticket.png'),
+                                cv2.IMREAD_COLOR)
+    template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
+    matches = match_template(gray_screenshot, template_again_gray, threshold=0.85)
+    logger.debug(f"发现门票{len(matches)}个。{matches}")
+
+    for top_left, bottom_right in matches:
+        x1, y1 = top_left
+        x2, y2 = bottom_right
+        center_x = int((x1 + x2) / 2)
+        center_y = int((y1 + y2) / 2)
+        mu.do_move_to(x + center_x, y + center_y)
+        time.sleep(0.2)
+        mu.do_click(Button.left)
+        time.sleep(0.2)
+        mu.do_click(Button.left)
+        time.sleep(0.2)
