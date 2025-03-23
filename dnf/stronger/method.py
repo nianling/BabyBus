@@ -3,8 +3,7 @@
 __author__ = "廿陵 <wemean66@gmail.com> (GitHub: @nianling)"
 __version__ = '1.0'
 
-
-import os
+import math
 import os
 import re
 
@@ -13,10 +12,8 @@ import numpy as np
 
 import config as config_
 from logger_config import logger
+from utils.monster_cluster import MonsterCluster
 from utils.utilities import match_template_one
-
-
-# from pytesseract import pytesseract
 
 
 def try_again_is_disabled(img_again):
@@ -124,3 +121,142 @@ def extract_fatigue_number(text):
     # 提取第一个数字（斜杠前的部分）
     match = re.match(r'^(\d+)/', cleaned_text)
     return int(match.group(1)) if match else None
+
+
+def get_closest_obj(obj_list, hero_xywh):
+    """
+    获取距离最近的目标
+    """
+    min_distance = float("inf")  # 默认距离为无穷大
+    monster_box = None
+    for box in obj_list:
+        dis = ((hero_xywh[0] - box[0]) ** 2 + (hero_xywh[1] - box[1]) ** 2) ** 0.5
+        if dis < min_distance:
+            monster_box = box
+            min_distance = dis
+    return monster_box, min_distance
+
+
+def find_densest_monster_cluster(monster_xywh_list, role_attack_center, max_distance=400):
+    """
+    找密集堆
+    """
+    def distance(p1, p2):
+        return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+
+    if not monster_xywh_list:
+        return None
+    if len(monster_xywh_list) == 1:
+        return monster_xywh_list[0][:2]
+    if len(monster_xywh_list) == 2:
+        x1, y1 = monster_xywh_list[0][:2]
+        x2, y2 = monster_xywh_list[1][:2]
+        if distance((x1, y1), (x2, y2)) <= max_distance:
+            center = ((x1 + x2) / 2, (y1 + y2) / 2)
+            return center
+        else:
+            distance1 = distance(role_attack_center, monster_xywh_list[0])
+            distance2 = distance(role_attack_center, monster_xywh_list[1])
+            if distance1 < distance2:
+                return monster_xywh_list[0]
+            else:
+                return monster_xywh_list[1]
+
+    cluster = MonsterCluster(monster_xywh_list, max_distance)
+    result = cluster.find_densest_cluster()
+
+    if result is None:
+        return None
+    else:
+        center, count = result
+        if count <= 1:
+            monster_box, _ = get_closest_obj(monster_xywh_list, role_attack_center)
+            return monster_box
+        return center
+
+
+def find_door_by_position(doors_xywh, position='右'):
+    """
+    根据方向 找最远的那个门
+    """
+    door_box_temp = None
+    for box in doors_xywh:
+        if position == '上':
+            if door_box_temp is None or box[1] < door_box_temp[1]:
+                door_box_temp = box
+        elif position == '下':
+            if door_box_temp is None or box[1] > door_box_temp[1]:
+                door_box_temp = box
+        elif position == '左':
+            if door_box_temp is None or box[0] < door_box_temp[0]:
+                door_box_temp = box
+        elif position == '右':
+            if door_box_temp is None or box[0] > door_box_temp[0]:
+                door_box_temp = box
+
+    return door_box_temp
+
+
+def exist_near(target_xywh, xywh_list, threshold=100):
+
+    if len(xywh_list) == 0 or xywh_list is None:
+        return False
+
+    # 获取 material 的中心坐标
+    material_center_x, material_center_y, _, _ = target_xywh  # material_box 直接使用中心坐标
+
+    for door in xywh_list:
+        door_center_x, door_center_y, _, _ = door  # door 也直接使用中心坐标
+
+        # 计算中心坐标之间的距离
+        distance = math.sqrt((material_center_x - door_center_x) ** 2 +
+                             (material_center_y - door_center_y) ** 2)
+
+        # 如果距离小于等于阈值，就返回 True
+        if distance <= threshold:
+            return True
+
+    return False
+
+
+def get_objs_in_range(target_xywh, xywh_list, threshold=100):
+    res = []
+
+    if len(xywh_list) == 0 or xywh_list is None:
+        return res
+
+    # 获取 material 的中心坐标
+    material_center_x, material_center_y, _, _ = target_xywh  # material_box 直接使用中心坐标
+
+    for door in xywh_list:
+        door_center_x, door_center_y, _, _ = door  # door 也直接使用中心坐标
+
+        # 计算中心坐标之间的距离
+        distance = math.sqrt((material_center_x - door_center_x) ** 2 + (material_center_y - door_center_y) ** 2)
+
+        # 如果距离小于等于阈值，就返回 True
+        if distance <= threshold:
+            # logger.info(f"{door},{target_xywh}--->{distance}")
+            res.append(door)
+
+    return res
+
+
+def is_hero_in_region(hero_xywh, img_shape, direction, fraction):
+    hero_x, hero_y, hero_w, hero_h = hero_xywh
+    img_h, img_w = img_shape[:2]  # img_shape是(height, width, channels)格式
+
+    if direction == "上":
+        region_height = img_h * fraction
+        return hero_y < region_height
+    elif direction == "下":
+        region_start = img_h * (1 - fraction)
+        return hero_y > region_start
+    elif direction == "左":
+        region_width = img_w * fraction
+        return hero_x < region_width
+    elif direction == "右":
+        region_start = img_w * (1 - fraction)
+        return hero_x > region_start
+
+

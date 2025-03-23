@@ -34,7 +34,12 @@ import skill_util as skill_util
 from dnf.stronger.det_result import DetResult
 from dnf.stronger.method import (
     detect_try_again_button,
-    detect_1and1_next_map_button
+    detect_1and1_next_map_button,
+    find_densest_monster_cluster,
+    get_closest_obj,
+    exist_near,
+    get_objs_in_range,
+    find_door_by_position
 )
 from dnf.stronger.player import (
     transfer_materials_to_account_vault,
@@ -55,7 +60,6 @@ from dnf.stronger.player import (
     goto_white_map_level,
     buy_from_mystery_shop,
 )
-from dnf.stronger.role_config import RoleConfig, Skill
 from logger_config import logger
 from role_list import get_role_config_list
 from utils import keyboard_utils as kbu
@@ -64,7 +68,6 @@ from utils import window_utils as window_utils
 from utils.custom_thread_pool_excutor import SingleTaskThreadPool
 from utils.fixed_length_queue import FixedLengthQueue
 from utils.keyboard_move_controller import MovementController
-from utils.monster_cluster import MonsterCluster
 from utils.utilities import plot_one_box
 from utils.window_utils import WindowCapture
 from dnf.stronger.path_finder import PathFinder
@@ -113,11 +116,11 @@ reader = easyocr.Reader(['en'])
 # 疲劳值识别
 pattern_pl = re.compile(r'\d+/\d+')
 
-color1 = (0, 0, 255)  # 红色
-color2 = (0, 255, 0)  # 绿色
-color3 = (255, 0, 0)  # 蓝色
-color4 = (0, 255, 255)  # 黄色
-color5 = (255, 0, 255)  # 紫色
+color_red = (0, 0, 255)  # 红色
+color_green = (0, 255, 0)  # 绿色
+color_blue = (255, 0, 0)  # 蓝色
+color_yellow = (0, 255, 255)  # 黄色
+color_purple = (255, 0, 255)  # 紫色
 
 # ---------------------------------------------------------
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
@@ -236,178 +239,6 @@ def on_release(key):
 def start_keyboard_listener():
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
         listener.join()
-
-
-def find_door_by_position(doors_xywh, position='右'):
-    """
-    根据方向 找最远的那个门
-    """
-    door_box_temp = None
-    for box in doors_xywh:
-        if position == '上':
-            if door_box_temp is None or box[1] < door_box_temp[1]:
-                door_box_temp = box
-        elif position == '下':
-            if door_box_temp is None or box[1] > door_box_temp[1]:
-                door_box_temp = box
-        elif position == '左':
-            if door_box_temp is None or box[0] < door_box_temp[0]:
-                door_box_temp = box
-        elif position == '右':
-            if door_box_temp is None or box[0] > door_box_temp[0]:
-                door_box_temp = box
-
-    return door_box_temp
-
-
-def exist_near(target_xywh, xywh_list, threshold=100):
-    if len(xywh_list) == 0 or xywh_list is None:
-        return False
-
-    # 获取 material 的中心坐标
-    material_center_x, material_center_y, _, _ = target_xywh  # material_box 直接使用中心坐标
-
-    for door in xywh_list:
-        door_center_x, door_center_y, _, _ = door  # door 也直接使用中心坐标
-
-        # 计算中心坐标之间的距离
-        distance = math.sqrt((material_center_x - door_center_x) ** 2 +
-                             (material_center_y - door_center_y) ** 2)
-
-        # 如果距离小于等于阈值，就返回 True
-        if distance <= threshold:
-            return True
-
-    return False
-
-
-def get_objs_in_range(target_xywh, xywh_list, threshold=100):
-    res = []
-
-    if len(xywh_list) == 0 or xywh_list is None:
-        return res
-
-    # 获取 material 的中心坐标
-    material_center_x, material_center_y, _, _ = target_xywh  # material_box 直接使用中心坐标
-
-    for door in xywh_list:
-        door_center_x, door_center_y, _, _ = door  # door 也直接使用中心坐标
-
-        # 计算中心坐标之间的距离
-        distance = math.sqrt((material_center_x - door_center_x) ** 2 + (material_center_y - door_center_y) ** 2)
-
-        # 如果距离小于等于阈值，就返回 True
-        if distance <= threshold:
-            # logger.info(f"{door},{target_xywh}--->{distance}")
-            res.append(door)
-
-    return res
-
-
-def is_hero_in_region(hero_xywh, img_shape, direction, fraction):
-    hero_x, hero_y, hero_w, hero_h = hero_xywh
-    img_h, img_w = img_shape[:2]  # img_shape是(height, width, channels)格式
-
-    if direction == "上":
-        region_height = img_h * fraction
-        return hero_y < region_height
-    elif direction == "下":
-        region_start = img_h * (1 - fraction)
-        return hero_y > region_start
-    elif direction == "左":
-        region_width = img_w * fraction
-        return hero_x < region_width
-    elif direction == "右":
-        region_start = img_w * (1 - fraction)
-        return hero_x > region_start
-
-
-def suggest_skill(role: RoleConfig, img0): # todo 蓝色的
-    # 随机一个技能名
-    skill_name = 'x'
-
-    for s in role.custom_priority_skills:
-        if isinstance(s, str) or isinstance(s, Key):
-            if skill_util.skill_ready_warm_colors(s, img0):
-                logger.debug(f"字符串技能:{s} 已恢复cd(识别)")
-                return s
-        elif isinstance(s, list):
-            return s
-        elif isinstance(s, Skill):
-            if s.cd:
-                t = time.time()
-                if t - s.cd > s.recent_use_time + 0.1:
-                    logger.debug(f"Skill:{s.name} 已恢复cd(计算)")
-                    s.recent_use_time = t  # 更新最近使用时间
-                    return s
-            elif len(s.command) == 1 or s.hot_key is not None:
-                sname = s.hot_key if s.hot_key is not None else s.command[0]
-                if skill_util.skill_ready_warm_colors(sname, img0):
-                    logger.debug(f"Skill:{s.name} 已恢复cd(识别)")
-                    return s
-            logger.debug('未恢复cd,再找')
-
-    logger.debug("自定义技能 没有合适的!!!")
-    for _ in range(10):
-        skill_name = role.candidate_hotkeys[int(np.random.randint(len(role.candidate_hotkeys), size=1)[0])]
-        logger.debug('随机技能名字', skill_name)
-        if skill_util.skill_ready_warm_colors(skill_name, img0):
-            break
-        else:
-            logger.debug('不行 再找一个技能名字', skill_name)
-            pass
-    return skill_name
-
-
-def suggest_skill_powerful(role: RoleConfig, img0):  # todo 蓝色的
-    for s in role.powerful_skills:
-        if isinstance(s, str) or isinstance(s, Key):
-            if skill_util.skill_ready_warm_colors(s, img0):
-                logger.debug(f"字符串技能:{s} 已恢复cd(识别)")
-                return s
-        elif isinstance(s, list):
-            return s
-        elif isinstance(s, Skill):
-            if s.cd:
-                t = time.time()
-                if t - s.cd > s.recent_use_time + 0.1:
-                    logger.debug(f"Skill:{s.name} 已恢复cd(计算)")
-                    s.recent_use_time = t  # 更新最近使用时间
-                    return s
-            elif len(s.command) == 1 or s.hot_key is not None:
-                sname = s.hot_key if s.hot_key is not None else s.command[0]
-                if skill_util.skill_ready_warm_colors(sname, img0):
-                    logger.debug(f"Skill:{s.name} 已恢复cd(识别)")
-                    return s
-            logger.debug('未恢复cd,再找')
-    return None
-
-
-def cast_skill(s):
-    if isinstance(s, str) or isinstance(s, Key):
-        kbu.do_press(s)
-    elif isinstance(s, list):
-        kbu.do_command_wait_time(s, 0)
-    elif isinstance(s, Skill):
-        if s.hot_key:
-            kbu.do_press(s.hot_key)
-        elif s.command:
-            if s.concurrent:
-                kbu.do_concurrent_command_wait_time(s.command, 0)
-            else:
-                kbu.do_command_wait_time(s.command, 0)
-            # s.recent_use_time = time.time()
-
-
-def get_closest_obj(obj_list, hero_xywh):
-    min_distance = float("inf")  # 默认距离为无穷大
-    monster_box = None
-    for box in obj_list:
-        dis = ((hero_xywh[0] - box[0]) ** 2 + (hero_xywh[1] - box[1]) ** 2) ** 0.5
-        if dis < min_distance:
-            monster_box = box
-            min_distance = dis
-    return monster_box, min_distance
 
 
 def analyse_det_result(results, hero_height, img0):
@@ -532,43 +363,6 @@ def analyse_det_result(results, hero_height, img0):
         res.sss_exist = sss_exist
 
         return res
-        # <<<<遍历完了<<<<<
-
-
-def distance(p1, p2):
-    return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
-
-
-def find_densest_monster_cluster(monster_xywh_list, role_attack_center, max_distance=400):
-    if not monster_xywh_list:
-        return None
-    if len(monster_xywh_list) == 1:
-        return monster_xywh_list[0][:2]
-    if len(monster_xywh_list) == 2:
-        x1, y1 = monster_xywh_list[0][:2]
-        x2, y2 = monster_xywh_list[1][:2]
-        if distance((x1, y1), (x2, y2)) <= max_distance:
-            center = ((x1 + x2) / 2, (y1 + y2) / 2)
-            return center
-        else:
-            distance1 = distance(role_attack_center, monster_xywh_list[0])
-            distance2 = distance(role_attack_center, monster_xywh_list[1])
-            if distance1 < distance2:
-                return monster_xywh_list[0]
-            else:
-                return monster_xywh_list[1]
-
-    cluster = MonsterCluster(monster_xywh_list, max_distance)
-    result = cluster.find_densest_cluster()
-
-    if result is None:
-        return None
-    else:
-        center, count = result
-        if count <= 1:
-            monster_box, _ = get_closest_obj(monster_xywh_list, role_attack_center)
-            return monster_box
-        return center
 
 
 # <<<<<<<<<<<<<<<< 方法定义 <<<<<<<<<<<<<<<<
@@ -913,24 +707,24 @@ def main_script():
                 if show:
                     if det.hero_xywh:
                         # 处理后的中心
-                        cv2.circle(img0, (int(hero_xywh[0]), int(hero_xywh[1])), 1, color2, 2)
+                        cv2.circle(img0, (int(hero_xywh[0]), int(hero_xywh[1])), 1, color_green, 2)
                         # 推理后的中心
-                        cv2.circle(img0, (int(hero_xywh[0]), int(hero_xywh[1] - h_h)), 1, color1, 2)
+                        cv2.circle(img0, (int(hero_xywh[0]), int(hero_xywh[1] - h_h)), 1, color_red, 2)
 
                     for a in (loot_xywh_list + gold_xywh_list):
                         # 掉落物
-                        cv2.circle(img0, (int(a[0]), int(a[1])), 1, color2, 2)
-                        cv2.circle(img0, (int(a[0]), int(a[1] - l_h)), 1, color1, 2)
+                        cv2.circle(img0, (int(a[0]), int(a[1])), 1, color_green, 2)
+                        cv2.circle(img0, (int(a[0]), int(a[1] - l_h)), 1, color_red, 2)
 
                     for a in (door_xywh_list + door_boss_xywh_list):
                         # 门口
-                        cv2.circle(img0, (int(a[0]), int(a[1])), 1, color2, 2)
-                        cv2.circle(img0, (int(a[0]), int(a[1] - d_h)), 1, color1, 2)
+                        cv2.circle(img0, (int(a[0]), int(a[1])), 1, color_green, 2)
+                        cv2.circle(img0, (int(a[0]), int(a[1] - d_h)), 1, color_red, 2)
 
                     for a in (monster_xywh_list):
                         # 怪
-                        cv2.circle(img0, (int(a[0]), int(a[1])), 1, color2, 2)
-                        cv2.circle(img0, (int(a[0]), int(a[1] - m_h)), 1, color1, 2)
+                        cv2.circle(img0, (int(a[0]), int(a[1])), 1, color_green, 2)
+                        cv2.circle(img0, (int(a[0]), int(a[1] - m_h)), 1, color_red, 2)
 
                 # ############################### 判断-准备打怪 ######################################
                 wait_for_attack = hero_xywh and (monster_xywh_list or boss_xywh_list or elite_monster_xywh_list) and not sss_appeared
@@ -959,7 +753,7 @@ def main_script():
 
                     if show:
                         # 怪(堆中心) 蓝色
-                        cv2.circle(img0, (int(monster_box[0]), int(monster_box[1])), 5, color3, 4)
+                        cv2.circle(img0, (int(monster_box[0]), int(monster_box[1])), 5, color_blue, 4)
                     # 怪处于攻击范围内
                     # monster_in_range = abs(hero_xywh[0] - monster_box[0]) < attx and abs(hero_xywh[1] - monster_box[1]) < atty
 
@@ -999,7 +793,7 @@ def main_script():
                     #     monster_in_range = abs(hero_xywh[0] - monster_box[0]) < 300 and abs(hero_xywh[1] - monster_box[1]) < 200
                     if show and monster_in_range:
                         # 怪处于攻击范围内,给角色一个标记
-                        cv2.circle(img0, (int(hero_xywh[0]), int(hero_xywh[1])), 10, color4, 2)
+                        cv2.circle(img0, (int(hero_xywh[0]), int(hero_xywh[1])), 10, color_yellow, 2)
 
                 # # todo 待考虑
                 # if not wait_for_attack and not sss_appeared:
@@ -1107,7 +901,7 @@ def main_script():
                     door_in_range = abs(door_box[1] - hero_xywh[1]) < th_y * 2 and abs(door_box[0] - hero_xywh[0]) < th_x  # todo 门的范围问题
                     if show and door_box:
                         # 给目标门口画一个点
-                        cv2.circle(img0, (int(door_box[0]), int(door_box[1])), 1, color3, 3)
+                        cv2.circle(img0, (int(door_box[0]), int(door_box[1])), 1, color_blue, 3)
 
                 # ####################### 判断-准备拾取材料 #############################################
                 # wait_for_pickup = hero_xywh and (not monster_xywh_list and hero_xywh and (loot_xywh_list or gold_xywh_list) and not continue_exist)
@@ -1125,13 +919,13 @@ def main_script():
                         material_is_gold = True
                     if show and material_box:
                         # 给目标掉落物画一个点
-                        cv2.circle(img0, (int(material_box[0]), int(material_box[1])), 2, color3, 3)
+                        cv2.circle(img0, (int(material_box[0]), int(material_box[1])), 2, color_blue, 3)
                     # 材料处于拾取范围
                     loot_in_range = abs(material_box[1] - hero_xywh[1]) < th_y and abs(
                         material_box[0] - hero_xywh[0]) < th_x
                     if show and loot_in_range:
                         # 材料处于拾取范围,给角色一个标记
-                        cv2.circle(img0, (int(hero_xywh[0]), int(hero_xywh[1])), 10, color4, 2)
+                        cv2.circle(img0, (int(hero_xywh[0]), int(hero_xywh[1])), 10, color_yellow, 2)
 
                 # 截图展示前的处理完毕,进行显示
                 if show:
@@ -1273,11 +1067,11 @@ def main_script():
 
                         skill_name = None
                         if role.powerful_skills and boss_door_appeared:
-                            skill_name = suggest_skill_powerful(role, img0)
+                            skill_name = skill_util.suggest_skill_powerful(role, img0)
                         if skill_name is None:
                             # 推荐技能
-                            skill_name = suggest_skill(role, img0)
-                        cast_skill(skill_name)
+                            skill_name = skill_util.suggest_skill(role, img0)
+                        skill_util.cast_skill(skill_name)
                         time.sleep(0.9)
                         continue
 
