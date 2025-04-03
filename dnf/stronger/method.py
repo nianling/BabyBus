@@ -260,3 +260,14 @@ def is_hero_in_region(hero_xywh, img_shape, direction, fraction):
         return hero_x > region_start
 
 
+def get_opposite_direction(direction):
+    # 定义方向与反方向的映射关系
+    opposite_map = {
+        "LEFT": "RIGHT",
+        "RIGHT": "LEFT",
+        "UP": "DOWN",
+        "DOWN": "UP"
+    }
+
+    # 获取反方向，如果输入无效则返回提示
+    return opposite_map.get(direction, None)

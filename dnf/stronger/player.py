@@ -562,12 +562,12 @@ def goto_daily_1and1(x, y):
     """
     logger.debug('点击畅玩任务')
     mu.do_smooth_move_to(x + 767, y + 542)  # 不等比
-    time.sleep(0.1)
+    time.sleep(0.2)
     mu.do_click(Button.left)
-    time.sleep(0.1)
+    time.sleep(0.2)
 
     mu.do_smooth_move_to(x + 494, y + 444)
-    time.sleep(0.1)
+    time.sleep(0.2)
     mu.do_click(Button.left)
     time.sleep(0.2)
 
@@ -635,6 +635,7 @@ def hide_right_bottom_icon(full_screen, x, y):
         pass
     else:
         mu.do_move_and_click(x + 744, y + 577)
+        time.sleep(0.1)
 
 
 def show_right_bottom_icon(full_screen, x, y):
@@ -647,6 +648,7 @@ def show_right_bottom_icon(full_screen, x, y):
         pass
     else:
         mu.do_move_and_click(x + 744, y + 577)
+        time.sleep(0.1)
 
 
 def buy_from_mystery_shop(full_screen, x, y):
@@ -672,3 +674,4 @@ def buy_from_mystery_shop(full_screen, x, y):
         time.sleep(0.2)
         mu.do_click(Button.left)
         time.sleep(0.2)
+        logger.debug("购买门票一次")
