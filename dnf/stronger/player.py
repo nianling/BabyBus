@@ -553,6 +553,24 @@ def goto_jianmie(x, y):
     time.sleep(2)
 
 
+def goto_abyss(x, y):
+    """
+    去白图，（跌宕群岛）
+    :param x:
+    :param y:
+    :return:
+    """
+    mu.do_smooth_move_to(x + 720, y + 470)
+    mu.do_click(Button.left)
+    time.sleep(0.5)
+
+    # 确认进入
+    mu.do_click(Button.left)
+    time.sleep(0.2)
+
+    time.sleep(2)
+
+
 def goto_daily_1and1(x, y):
     """
     去白图，（跌宕群岛）
