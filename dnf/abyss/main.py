@@ -898,6 +898,8 @@ def main_script():
                         collect_loot_pressed = True
                         collect_loot_pressed_time = time.time()
                         time.sleep(0.1)
+                        kbu.do_press(Key.left)
+                        time.sleep(0.1)
                         kbu.do_press_with_time('x', 2000, 50)
                         logger.warning("预先长按x 按完x了")
 
@@ -1010,6 +1012,8 @@ def main_script():
                             collect_loot_pressed = True
                             collect_loot_pressed_time = time.time()
                             time.sleep(0.1)
+                            kbu.do_press(Key.left)
+                            time.sleep(0.1)
                             kbu.do_press_with_time('x', 4000, 50)
                             logger.warning("中间长按x 按完x了")
                         continue
@@ -1049,6 +1053,8 @@ def main_script():
                 mover._release_all_keys()
                 time.sleep(0.1)
                 kbu.do_press(dnf.Key_collect_loot)
+                time.sleep(0.1)
+                kbu.do_press(Key.left)
                 time.sleep(0.1)
                 kbu.do_press_with_time('x', 2000, 0)
                 logger.warning("最后长按x 按完x了")
