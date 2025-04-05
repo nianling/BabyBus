@@ -467,7 +467,7 @@ def main_script():
             if game_mode == 2:
                 goto_daily_1and1(x, y)
             elif game_mode == 1:
-                goto_white_map(x, y)
+                goto_white_map_level(x, y, role.white_map_level)
             elif game_mode == 3:
                 goto_zhuizong(x, y)
             elif game_mode == 4:

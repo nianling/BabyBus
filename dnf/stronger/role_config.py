@@ -37,6 +37,7 @@ class RoleConfig:
     attack_range_y: Optional[int] = field(default=0, metadata={"description": "攻击范围y"})
     buff_effective: Optional[bool] = field(default=True, metadata={"description": "是否上buff"})
     powerful_skills: Optional[List[object]] = field(default_factory=list, metadata={"description": "强力技能列表"})
+    white_map_level: int = field(default=2, metadata={"description": "白图等级，默认勇士，（0普通，1冒险，2勇士，依次类推）"})
 
 
 # 直接运行这个脚本
