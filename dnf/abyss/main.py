@@ -330,7 +330,7 @@ def analyse_det_result(results, hero_height, img):
                 forward_exists = True
 
             if names[cls] == "ball":
-                xywh[1] = xyxy[3]
+                xywh[1] = xyxy[3] + 50
                 ball_xywh_list.append(xywh)
 
             if names[cls] == "hole":
