@@ -175,22 +175,22 @@ def find_densest_monster_cluster(monster_xywh_list, role_attack_center, max_dist
         return center
 
 
-def find_door_by_position(doors_xywh, position='右'):
+def find_door_by_position(doors_xywh, position='RIGHT'):
     """
     根据方向 找最远的那个门
     """
     door_box_temp = None
     for box in doors_xywh:
-        if position == '上':
+        if position == 'UP':
             if door_box_temp is None or box[1] < door_box_temp[1]:
                 door_box_temp = box
-        elif position == '下':
+        elif position == 'DOWN':
             if door_box_temp is None or box[1] > door_box_temp[1]:
                 door_box_temp = box
-        elif position == '左':
+        elif position == 'LEFT':
             if door_box_temp is None or box[0] < door_box_temp[0]:
                 door_box_temp = box
-        elif position == '右':
+        elif position == 'RIGHT':
             if door_box_temp is None or box[0] > door_box_temp[0]:
                 door_box_temp = box
 
@@ -246,16 +246,16 @@ def is_hero_in_region(hero_xywh, img_shape, direction, fraction):
     hero_x, hero_y, hero_w, hero_h = hero_xywh
     img_h, img_w = img_shape[:2]  # img_shape是(height, width, channels)格式
 
-    if direction == "上":
+    if direction == 'UP':
         region_height = img_h * fraction
         return hero_y < region_height
-    elif direction == "下":
+    elif direction == 'DOWN':
         region_start = img_h * (1 - fraction)
         return hero_y > region_start
-    elif direction == "左":
+    elif direction == 'LEFT':
         region_width = img_w * fraction
         return hero_x < region_width
-    elif direction == "右":
+    elif direction == 'RIGHT':
         region_start = img_w * (1 - fraction)
         return hero_x > region_start
 

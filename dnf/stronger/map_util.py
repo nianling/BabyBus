@@ -6,6 +6,7 @@ __version__ = '1.0'
 
 import os
 import time
+from datetime import datetime
 
 import cv2
 import cv2 as cv
@@ -194,6 +195,17 @@ def current_room_index_cropped(crop, rows, cols):
     return bluest_cell
 
 
+def current_room_index_cropped_retry(crop, rows, cols, count=5):
+    for i in range(count):
+        room = current_room_index_cropped(crop, rows, cols)
+        if room != (-1, -1):
+            return room
+
+    logger.error("未识别到当前访问标志")
+    return -1, -1
+
+
+
 def get_boss_room_cropped(crop, rows, cols):
     """
     :param crop:
@@ -378,35 +390,43 @@ def all_question_mark_room_cropped(crop, rows, cols, cur_row, cur_col):
 
             direction = None
             if grid_x == (cur_col + 1):
-                direction = 'right'
+                direction = 'RIGHT'
             if grid_x == (cur_col - 1):
-                direction = 'left'
+                direction = 'LEFT'
             if grid_y == (cur_row - 1):
-                direction = 'up'
+                direction = 'UP'
             if grid_y == (cur_row + 1):
-                direction = 'down'
+                direction = 'DOWN'
             res.add(direction)
     return list(res)
+
+
+def any_question_mark_room_cropped(crop):
+    gray_screenshot = cv.cvtColor(crop, cv.COLOR_BGRA2GRAY)
+    template_again_gray = cv.cvtColor(question_template, cv.COLOR_BGR2GRAY)
+    matches = match_template(gray_screenshot, template_again_gray, threshold=0.7)
+
+    return len(matches) > 0
 
 
 # ------------#######################################################################################
 
 map_list = [
-    {'img_num': [4, 5, 6, 7], 'direction': ['right']},
-    {'img_num': [12, 12, 14, 15], 'direction': ['up']},
-    {'img_num': [20, 21, 22, 23], 'direction': ['up', 'right']},
-    {'img_num': [28, 29, 30, 31], 'direction': ['left']},
-    {'img_num': [36, 37, 38, 39], 'direction': ['left', 'right']},
-    {'img_num': [44, 45, 46, 47], 'direction': ['up', 'left']},
-    {'img_num': [52, 53, 54, 55], 'direction': ['up', 'left', 'right']},
-    {'img_num': [60, 61, 62, 63], 'direction': ['down']},
-    {'img_num': [68, 69, 70, 71], 'direction': ['right', 'down']},
-    {'img_num': [76, 77, 78, 79], 'direction': ['up', 'down']},
-    {'img_num': [84, 85, 86, 87], 'direction': ['up', 'down', 'right']},
-    {'img_num': [92, 93, 94, 95], 'direction': ['left', 'down']},
-    {'img_num': [100, 101, 102, 103], 'direction': ['left', 'right', 'down']},
-    {'img_num': [108, 109, 110, 111], 'direction': ['up', 'left', 'down']},
-    {'img_num': [116, 117, 118, 119], 'direction': ['up', 'down', 'left', 'right']}
+    {'img_num': [4, 5, 6, 7], 'direction': ['RIGHT']},
+    {'img_num': [12, 12, 14, 15], 'direction': ['UP']},
+    {'img_num': [20, 21, 22, 23], 'direction': ['UP', 'RIGHT']},
+    {'img_num': [28, 29, 30, 31], 'direction': ['LEFT']},
+    {'img_num': [36, 37, 38, 39], 'direction': ['LEFT', 'RIGHT']},
+    {'img_num': [44, 45, 46, 47], 'direction': ['UP', 'LEFT']},
+    {'img_num': [52, 53, 54, 55], 'direction': ['UP', 'LEFT', 'RIGHT']},
+    {'img_num': [60, 61, 62, 63], 'direction': ['DOWN']},
+    {'img_num': [68, 69, 70, 71], 'direction': ['RIGHT', 'DOWN']},
+    {'img_num': [76, 77, 78, 79], 'direction': ['UP', 'DOWN']},
+    {'img_num': [84, 85, 86, 87], 'direction': ['UP', 'DOWN', 'RIGHT']},
+    {'img_num': [92, 93, 94, 95], 'direction': ['LEFT', 'DOWN']},
+    {'img_num': [100, 101, 102, 103], 'direction': ['LEFT', 'RIGHT', 'DOWN']},
+    {'img_num': [108, 109, 110, 111], 'direction': ['UP', 'LEFT', 'DOWN']},
+    {'img_num': [116, 117, 118, 119], 'direction': ['UP', 'DOWN', 'LEFT', 'RIGHT']}
 ]
 
 # 初始化到内存中
@@ -427,6 +447,13 @@ for map_img in map_list:
 
 #######################################
 
+if __name__ == "__main__":
+    crop = cv.imread('img/no_allow_directions_crop0.jpg')
+    cv.imshow('crop', crop)
+    # cv.waitKey(0)
+    directions = get_allow_directions(crop, 0, 2)
+    print(directions)
+
 
 # if __name__ == "__main__":
 #     # 从识别到的的小地图区域中找boss房间
@@ -440,29 +467,37 @@ for map_img in map_list:
 # # # img = cv.imread('all2.jpg')
 # # 计算下个方向(img)
 
+
+# if __name__ == "__main__":
 #
-if __name__ == "__main__":
-    img = cv.imread('img0.jpg')  # 1,2
-    # img = cv.imread('all2.jpg')  # 1,4
-    # img = cv.imread('all3.jpg')  # 1,3
-
-    cols = get_colum_count(img)
-    rows = get_row_count(img)
-
-    print('行，列', rows, cols)
-
-    x = img.shape[1] - 8 - (cols * 18)
-    y = 52
-    crop = img[y:y + (rows * 18), x:x + (cols * 18)]
-    # cv.imwrite('rectangle.png',crop)
-    # grid_y, grid_x = one_question_mark_room_cropped(crop, rows, cols)
-    # print(grid_y, grid_x)
-    # grid_y = grid_y+1
-    # grid_x = grid_x+1
-    #
-    # one = crop[(grid_y - 1) * 18:grid_y * 18, (grid_x - 1) * 18:grid_x * 18]
-    # cv.imshow("one", one)
-    # cv.waitKey(0)
-    # cv.imwrite('cccall3.png', one)
+#     map_list = [
+#         {'img_num': [4, 5, 6, 7], 'direction': ['RIGHT']},
+#         {'img_num': [12, 12, 14, 15], 'direction': ['UP']},
+#         {'img_num': [20, 21, 22, 23], 'direction': ['UP', 'RIGHT']},
+#         {'img_num': [28, 29, 30, 31], 'direction': ['LEFT']},
+#         {'img_num': [36, 37, 38, 39], 'direction': ['LEFT', 'RIGHT']},
+#         {'img_num': [44, 45, 46, 47], 'direction': ['UP', 'LEFT']},
+#         {'img_num': [52, 53, 54, 55], 'direction': ['UP', 'LEFT', 'RIGHT']},
+#         {'img_num': [60, 61, 62, 63], 'direction': ['DOWN']},
+#         {'img_num': [68, 69, 70, 71], 'direction': ['RIGHT', 'DOWN']},
+#         {'img_num': [76, 77, 78, 79], 'direction': ['UP', 'DOWN']},
+#         {'img_num': [84, 85, 86, 87], 'direction': ['UP', 'DOWN', 'RIGHT']},
+#         {'img_num': [92, 93, 94, 95], 'direction': ['LEFT', 'DOWN']},
+#         {'img_num': [100, 101, 102, 103], 'direction': ['LEFT', 'RIGHT', 'DOWN']},
+#         {'img_num': [108, 109, 110, 111], 'direction': ['UP', 'LEFT', 'DOWN']},
+#         {'img_num': [116, 117, 118, 119], 'direction': ['UP', 'DOWN', 'LEFT', 'RIGHT']}
+#     ]
 #
-# # y33, x右8，宽高18
+#     npy_list = []
+#     for map_img in map_list:
+#         item = {'img_num': [], 'direction': map_img['direction']}
+#         for img_num in map_img['img_num']:
+#             if img_num == 4:
+#                 p = os.path.normpath(f'{config_.project_base_path}/assets/img/game/c_{img_num}.npy')
+#                 # print(p)
+#                 image111 = np.load(p)
+#                 # 显示图片
+#                 cv2.imshow(f'Loaded Image', image111)
+#                 cv2.waitKey(0)
+#
+#             # item['img_num'].append(img1)

@@ -898,16 +898,7 @@ def main_script():
                                 else:
                                     if next_room_direction:
                                         logger.debug(f"加入path, 当前房间是 {current_room}, 模板方向是 {next_room_direction}")
-                                        path_stack.append((current_room, next_room_direction.upper()))
-
-                                if 'up' == next_room_direction:
-                                    next_room_direction = '上'
-                                if 'down' == next_room_direction:
-                                    next_room_direction = '下'
-                                if 'left' == next_room_direction:
-                                    next_room_direction = '左'
-                                if 'right' == next_room_direction:
-                                    next_room_direction = '右'
+                                        path_stack.append((current_room, next_room_direction))
 
                             if analyse_map_door_error and map_door_error_cnt > 5:
                                 logger.error("分析小地图的行列door多次出错了 废了！！！")
@@ -1004,16 +995,16 @@ def main_script():
                             logger.error("等三秒直接跳过材料")
                             time.sleep(1)
                             # 可能没过去，随便走两步，(todo 根据角色位置，决定往哪里走)
-                            if next_room_direction == '右':
+                            if next_room_direction == 'RIGHT':
                                 logger.error("先向左走两步")
                                 kbu.do_press_with_time(Key.left, 800, 0)
-                            if next_room_direction == '左':
+                            if next_room_direction == 'LEFT':
                                 logger.error("先向右走两步")
                                 kbu.do_press_with_time(Key.right, 800, 0)
-                            if next_room_direction == '上':
+                            if next_room_direction == 'UP':
                                 logger.error("先向下走两步")
                                 kbu.do_press_with_time(Key.down, 800, 0)
-                            if next_room_direction == '下':
+                            if next_room_direction == 'DOWN':
                                 logger.error("先向上走两步")
                                 kbu.do_press_with_time(Key.up, 800, 0)
                             # stuck_room_idx = None
@@ -1024,24 +1015,20 @@ def main_script():
                     # todo 门还要处理，做追踪？
                     if len(allow_directions) > len(door_xywh_list + door_boss_xywh_list):
                         # 尚未出现目标门,需要继续移动寻找 todo 当前画面一个门也没有的时候进不来这个逻辑
-                        if next_room_direction == '右' and (not door_box or door_box[0] < img0.shape[1] * 4 // 5):  # 右侧四分之一还没有门出现,继续往右
+                        if next_room_direction == 'RIGHT' and (not door_box or door_box[0] < img0.shape[1] * 4 // 5):  # 右侧四分之一还没有门出现,继续往右
                             logger.debug("目标房间在右边---->右侧四分之一还没有门出现,继续往右")
                             # todo 防止走向目标门的过程中,误入其他门(主要是左右跑的时候,误入了上方或下方的门)
                             mover.move(target_direction="RIGHT")
                             continue
-                        if next_room_direction == '左' and ( not door_box or door_box[0] > img0.shape[1] // 5):  # 左侧四分之一还没有门出现,继续往左
+                        if next_room_direction == 'LEFT' and ( not door_box or door_box[0] > img0.shape[1] // 5):  # 左侧四分之一还没有门出现,继续往左
                             logger.debug("目标房间在左边---->左侧四分之一还没有门出现,继续往左")
                             mover.move(target_direction="LEFT")
                             continue
-                        # if next_room_direction == '下' and (not door_box or door_box[1] < img0.shape[0] * 2 // 3):
-                        # if next_room_direction == '下' and (not door_box or door_box[1] < img0.shape[0] * 7 // 9):
-                        # if next_room_direction == '下' and (not door_box or door_box[1] <= img0.shape[0] * 751 // 1000):
-                        if next_room_direction == '下' and (not door_box or door_box[1] <= img0.shape[0] * 775 // 1000):
+                        if next_room_direction == 'DOWN' and (not door_box or door_box[1] <= img0.shape[0] * 775 // 1000):
                             logger.debug("目标房间在下边---->下侧四分之一还没有门出现,继续往下")
                             mover.move(target_direction="DOWN")
                             continue
-                        # if next_room_direction == '上' and (not door_box or door_box[1] > img0.shape[0] * 2 // 3):
-                        if next_room_direction == '上' and (not door_box or door_box[1] > img0.shape[0] * 0.72):
+                        if next_room_direction == 'UP' and (not door_box or door_box[1] > img0.shape[0] * 0.72):
                             logger.debug("目标房间在上边---->上侧二分之一还没有门出现,继续往上")
                             mover.move(target_direction="UP")
                             continue
@@ -1381,13 +1368,12 @@ def main_script():
                             logger.error("翻牌已经esc过，先等等1.5s再关闭")
                     else:
                         logger.error("翻牌刚刚出现，先等等再关闭")
-                    
-                    
-                    
-                    
+
                     # 不管了,全部释放掉
                     mover._release_all_keys()
                     time.sleep(0.1)  # todo 翻牌睡两秒可行?
+
+                    continue
                 # 逻辑处理-出现翻牌<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
                 # 逻辑处理-什么都没有>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -1420,7 +1406,7 @@ def main_script():
                             next_room_direction = finder.get_next_direction((cur_row, cur_col), allow_directions)
                             print("计算方向2", next_room_direction)
                             logger.warning(f"除了角色什么也没识别到,当前房间: {cur_row},{cur_col},允许方向: {allow_directions}, 下个方向: {next_room_direction}")
-                            direct = next_room_direction.upper()
+                            direct = next_room_direction
 
                         except Exception as e:
                             print(f"捕获到异常: {e}")

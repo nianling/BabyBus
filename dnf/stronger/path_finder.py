@@ -152,13 +152,13 @@ class PathFinder:
     def _get_next_pos(self, pos, direction):
         """根据方向计算下一个坐标"""
         row, col = pos
-        if direction == 'up':
+        if direction == 'UP':
             return (row - 1, col)
-        elif direction == 'down':
+        elif direction == 'DOWN':
             return (row + 1, col)
-        elif direction == 'left':
+        elif direction == 'LEFT':
             return (row, col - 1)
-        elif direction == 'right':
+        elif direction == 'RIGHT':
             return (row, col + 1)
         else:
             raise ValueError("无效方向")
@@ -211,12 +211,12 @@ class PathFinder:
         next_row, next_col = next_pos
 
         if next_row < curr_row:
-            return 'up'
+            return 'UP'
         elif next_row > curr_row:
-            return 'down'
+            return 'DOWN'
         elif next_col < curr_col:
-            return 'left'
+            return 'LEFT'
         elif next_col > curr_col:
-            return 'right'
+            return 'RIGHT'
         else:
             return None
