@@ -698,7 +698,7 @@ def main_script():
                 wait_for_next_room = ((forward_exists or hole_xywh_list)
                                       and not ball_xywh_list and not monster_xywh_list and not boss_xywh_list
                                       and not ball_appeared and not fight_victory)
-                next_room_direction = '右'
+                next_room_direction = 'RIGHT'
 
                 # ####################### 判断-准备拾取材料 #############################################
                 wait_for_pickup = hero_xywh and (loot_xywh_list or gold_xywh_list) and ball_appeared  # fight_victory
