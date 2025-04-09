@@ -367,7 +367,7 @@ def from_sailiya_to_abyss(x, y):
     mu.do_smooth_move_to(x + 145, y + 120)
     time.sleep(0.1)
     mu.do_click(Button.left)
-    time.sleep(1)
+    time.sleep(2.2)
 
 
 def crusader_to_battle(x, y):
