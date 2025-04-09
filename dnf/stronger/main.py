@@ -1387,7 +1387,7 @@ def main_script():
                         door_absence_time = time.time()
                     if hero_xywh is not None:
                         logger.warning("除了角色什么也没识别到")
-                        direct = "RIGHT"
+                        direct = random.choice(random.choice([kbu.single_direct, kbu.double_direct]))
                         try:
                             map_crop = map_util.get_small_map_region_img(img0, rows, cols)
                             cur_row, cur_col = map_util.current_room_index_cropped(map_crop, rows, cols)
@@ -1406,7 +1406,8 @@ def main_script():
                             next_room_direction = finder.get_next_direction((cur_row, cur_col), allow_directions)
                             print("计算方向2", next_room_direction)
                             logger.warning(f"除了角色什么也没识别到,当前房间: {cur_row},{cur_col},允许方向: {allow_directions}, 下个方向: {next_room_direction}")
-                            direct = next_room_direction
+                            if next_room_direction:
+                                direct = next_room_direction
 
                         except Exception as e:
                             print(f"捕获到异常: {e}")
