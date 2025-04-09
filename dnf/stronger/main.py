@@ -604,6 +604,7 @@ def main_script():
             path_stack = []  # ((x,y),direction) 房间，去下一个房间的方向
             card_esc_time = 0
             card_appear_time = 0
+            hero_stuck_pos = {}  # ((r,c),[(x,y),(x,y)])
 
             # frame = 0
             while True:  # 循环打怪过图
@@ -674,30 +675,36 @@ def main_script():
                     if hero_pos_is_stable and not sss_appeared and stuck_room_idx is None:
                         random_direct = random.choice(random.choice([kbu.single_direct, kbu.double_direct]))
                         logger.warning('可能卡住不能移动了{},随机跑个方向看看-->{}',hero_xywh, random_direct)  # todo 方向处理
-
+                        kbd_current_direction = mover.get_current_direction()
                         # 先看是不是在门上
                         if len(door_xywh_list + door_boss_xywh_list) > 0 and exist_near(hero_xywh, door_xywh_list + door_boss_xywh_list, 100):
                             if hero_xywh[0] > img0.shape[1] * 4 // 5:
                                 logger.debug("人在右边")
-                                random_direct = random.choice(list(filter(lambda x1: x1 != "RIGHT", kbu.single_direct)))
+                                random_direct = random.choice(list(filter(lambda x1: x1 != "RIGHT" and x1 != kbd_current_direction, kbu.single_direct)))
                             elif hero_xywh[0] < img0.shape[1] * 1 // 5:
                                 logger.debug("人在左边")
-                                random_direct = random.choice(list(filter(lambda x1: x1 != "LEFT", kbu.single_direct)))
+                                random_direct = random.choice(list(filter(lambda x1: x1 != "LEFT" and x1 != kbd_current_direction, kbu.single_direct)))
                             elif hero_xywh[1] > img0.shape[0] * 3 // 5:
                                 logger.debug("人在下面")
-                                random_direct = random.choice(list(filter(lambda x1: x1 != "DOWN", kbu.single_direct)))
+                                random_direct = random.choice(list(filter(lambda x1: x1 != "DOWN" and x1 != kbd_current_direction, kbu.single_direct)))
                             else:
                                 logger.debug("人在上面")
-                                random_direct = random.choice(list(filter(lambda x1: x1 != "UP", kbu.single_direct)))
+                                random_direct = random.choice(list(filter(lambda x1: x1 != "UP" and x1 != kbd_current_direction, kbu.single_direct)))
                         else:
-                            logger.error(f"x轴上位置：{hero_xywh[0]//img0.shape[1]}")
-                            logger.error(f"y轴上位置：{hero_xywh[1]//img0.shape[0]}")
+                            logger.error(f"x轴上位置：{hero_xywh[0]/img0.shape[1]}")
+                            logger.error(f"y轴上位置：{hero_xywh[1]/img0.shape[0]}")
                             if hero_xywh[0] > img0.shape[1] * 3 // 4 and (mover.get_current_direction() is None or "RIGHT" in mover.get_current_direction()):
                                 logger.debug("人在右边2")
-                                random_direct = random.choice(list(filter(lambda x1: x1 != "RIGHT", kbu.single_direct)))
+                                mover.move(target_direction="LEFT")
+                                time.sleep(1.2)
+                                logger.error("强制向左1秒")
+                                random_direct = random.choice(list(filter(lambda x1: x1 != "RIGHT" and x1 != kbd_current_direction, kbu.single_direct)))
                             elif hero_xywh[0] < img0.shape[1] * 1 // 5 and (mover.get_current_direction() is None or "LEFT" in mover.get_current_direction()):
                                 logger.debug("人在左边2")
-                                random_direct = random.choice(list(filter(lambda x1: x1 != "LEFT", kbu.single_direct)))
+                                mover.move(target_direction="RIGHT")
+                                time.sleep(1.2)
+                                logger.error("强制向右1秒")
+                                random_direct = random.choice(list(filter(lambda x1: x1 != "LEFT" and x1 != kbd_current_direction, kbu.single_direct)))
                             else:
                                 try:
                                     # 裁剪小地图区域
@@ -705,18 +712,21 @@ def main_script():
                                     # 当前房间位置
                                     current_room = map_util.current_room_index_cropped(map_crop, rows, cols)
                                     logger.info('小卡，当前房间是 {}', current_room)
+                                    if not hero_stuck_pos[current_room]:
+                                        hero_stuck_pos[current_room] = []
+                                        hero_stuck_pos[current_room].append(hero_xywh)
                                     if current_room != (-1, -1):
                                         if current_room in [item[0] for item in path_stack]:
                                             for ii in range(len(path_stack) - 1, 0, -1):
                                                 if path_stack[ii][0] == current_room:
                                                     previous = path_stack[ii - 1][1]
                                                     logger.info('小卡，当前房间finder过，之前是向【{}】走，走过来的', previous)
-                                                    random_direct = random.choice(list(filter(lambda x1: x1 != get_opposite_direction(previous), kbu.single_direct)))
+                                                    random_direct = random.choice(list(filter(lambda x1: x1 != get_opposite_direction(previous) and x1 != kbd_current_direction, kbu.single_direct)))
                                                     break
                                         else:
                                             logger.info('小卡，当前房间未finder过，之前是向【{}】走，走过来的', path_stack[-1][1])
                                             random_direct = random.choice(
-                                                list(filter(lambda x1: x1 != get_opposite_direction(path_stack[-1][1]), kbu.single_direct)))
+                                                list(filter(lambda x1: x1 != get_opposite_direction(path_stack[-1][1]) and x1 != kbd_current_direction, kbu.single_direct)))
                                 except Exception as e:
                                     logger.error(e)
                                     traceback.print_exc()
@@ -1408,7 +1418,6 @@ def main_script():
                             logger.warning(f"除了角色什么也没识别到,当前房间: {cur_row},{cur_col},允许方向: {allow_directions}, 下个方向: {next_room_direction}")
                             if next_room_direction:
                                 direct = next_room_direction
-
                         except Exception as e:
                             print(f"捕获到异常: {e}")
                             traceback.print_exc()
