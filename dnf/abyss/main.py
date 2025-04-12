@@ -44,7 +44,8 @@ from dnf.stronger.player import (
     hide_right_bottom_icon,
     show_right_bottom_icon,
     buy_from_mystery_shop,
-    goto_abyss
+    goto_abyss,
+    buy_tank_from_mystery_shop
 )
 from logger_config import logger
 from dnf.stronger.role_list import get_role_config_list
@@ -71,8 +72,7 @@ shutdown_pc_after_finish = False
 # 执行脚本的第一个角色_编号
 first_role_no = 1
 last_role_no = 1
-default_fatigue_reserved = None
-# default_fatigue_reserved = 30
+
 weights = os.path.join(config_.project_base_path, 'weights/abyss.04032147.best.pt')  # 模型存放的位置
 # <<<<<<<<<<<<<<<< 运行时相关的参数 <<<<<<<<<<<<<<<<
 
@@ -443,8 +443,16 @@ def main_script():
             logger.debug("传送到风暴门口,选地图...")
             # 传送到风暴门口
             from_sailiya_to_abyss(x, y)
-            kbu.do_press_with_time(Key.up, 500, 50)
+            logger.debug("先向上移，保持顶到最上位置。。")
+            kbu.do_press_with_time(Key.up, 3000, 50)
             # 让角色走到最左面，进图选择页面
+            logger.debug("再向左走，进入选择地图页面。。")
+            kbu.do_press_with_time(Key.left, 5000, 300)
+
+            # 先向右移动一点，以防一传过来的就离得很近
+            logger.debug("向右移一点，以防一传过来的就离得很近。。")
+            kbu.do_press_with_time(Key.right, 1500, 50)
+            logger.debug("向左走向左走，进入选择地图页面。。")
             kbu.do_press_with_time(Key.left, 3000, 300)
             time.sleep(0.5)
             time.sleep(1.5)  # 先等自己移动到深渊图
@@ -491,7 +499,7 @@ def main_script():
                 kbu.do_press(Key.esc)
                 time.sleep(0.2)
                 break
-
+            
             pause_event.wait()  # 暂停
 
             fight_count += 1
@@ -526,6 +534,7 @@ def main_script():
             ball_appeared = False  # 遇到球了
             fight_victory = False  # 已经结算了
             door_absence_time = 0  # 什么也没识别到的时间(没识别到门)
+            hole_appeared = False
 
             # frame = 0
             while True:  # 循环打怪过图
@@ -585,10 +594,13 @@ def main_script():
                 if continue_exist or shop_exist or shop_mystery_exist:
                     logger.warning(f"出现商店{shop_exist}，再次挑战了{continue_exist}")
                     fight_victory = True
-
+                
                 if ball_xywh_list:
                     logger.warning(f"出现球了")
                     ball_appeared = True
+                if hole_xywh_list:
+                    logger.warning(f"出现大坑了")
+                    hole_appeared = True
 
                 if hero_xywh:
                     pass
@@ -654,7 +666,7 @@ def main_script():
                     if show:
                         # 怪(堆中心) 蓝色
                         cv2.circle(img4show, (int(monster_box[0]), int(monster_box[1])), 5, color_blue, 4)
-
+                    
                     # 怪处于攻击范围内
                     if role.attack_center_x:
                         if mover.get_current_direction() is None or "RIGHT" in mover.get_current_direction():
@@ -663,7 +675,7 @@ def main_script():
                                                 and abs(role_attack_center[1] - monster_box[1]) < 100
                                                 ) or (
                                                        monster_box[0] < role_attack_center[0]
-                                                       and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x * 0.65)
+                                                       and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x*0.65)
                                                        and abs(role_attack_center[1] - monster_box[1]) < 100
                                                )
                         else:
@@ -672,7 +684,7 @@ def main_script():
                                                 and abs(role_attack_center[1] - monster_box[1]) < 100
                                                 ) or (
                                                    (monster_box[0] > role_attack_center[0]
-                                                    and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x * 0.65)
+                                                    and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x*0.65)
                                                     and abs(role_attack_center[1] - monster_box[1]) < 100
                                                     )
                                                )
@@ -701,7 +713,7 @@ def main_script():
                 next_room_direction = 'RIGHT'
 
                 # ####################### 判断-准备拾取材料 #############################################
-                wait_for_pickup = hero_xywh and (loot_xywh_list or gold_xywh_list) and ball_appeared  # fight_victory
+                wait_for_pickup = hero_xywh and (loot_xywh_list or gold_xywh_list) and ball_appeared # fight_victory
                 material_box = None
                 loot_in_range = False
                 material_min_distance = float("inf")
@@ -800,7 +812,7 @@ def main_script():
                 # 逻辑处理-找门进入下个房间<<<<<<<<<<<<<<<<<<<<<<<<<
 
                 # 逻辑处理-有怪要打怪>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                if wait_for_attack:  # todo 要打球
+                if wait_for_attack: # todo 要打球
                     # 处于攻击范围
                     if monster_in_range:
 
@@ -826,7 +838,7 @@ def main_script():
                         skill_util.cast_skill(skill_name)
                         time.sleep(0.9)
                         continue
-
+                    
                     pause_event.wait()  # 暂停
                     # 目标在角色右上方
                     if monster_box[1] - role_attack_center[1] < 0 and monster_box[0] - role_attack_center[0] > 0:
@@ -902,12 +914,12 @@ def main_script():
                         time.sleep(0.1)
                         kbu.do_press(Key.left)
                         time.sleep(0.1)
-                        kbu.do_press_with_time('x', 2000, 50)
+                        kbu.do_press_with_time('x', 5000 if hole_appeared == 4 else 2000, 50),
                         logger.warning("预先长按x 按完x了")
 
                         continue
                     elif collect_loot_pressed and time.time() - collect_loot_pressed_time < 10:
-                        logger.warning(f"已经预先按下移动物品了，10s内忽略拾取...{int(10 - (time.time() - collect_loot_pressed_time))}")
+                        logger.warning(f"已经预先按下移动物品了，10s内忽略拾取...{int(10-(time.time() - collect_loot_pressed_time))}")
                         continue
                     elif collect_loot_pressed and time.time() - collect_loot_pressed_time >= 10:
                         logger.warning(f"已经预先按下移动物品了，10已经过去了...")
@@ -987,6 +999,14 @@ def main_script():
                     # 神秘商店
                     if shop_mystery_exist:
                         buy_from_mystery_shop(img0, x, y)
+                        time.sleep(1)
+                        buy_tank_from_mystery_shop(img0, x, y)
+                        winsound.PlaySound("SystemHand", winsound.SND_ALIAS)
+                        if pause_event.is_set():
+                            logger.warning(f"有神秘商店，暂停运行...")
+                            pause_event.clear()  # 暂停
+
+                        pause_event.wait()
                         kbu.do_press(Key.esc)
                         logger.warning("神秘商店开着,需要esc关闭")
                         time.sleep(0.1)
@@ -1017,14 +1037,14 @@ def main_script():
                             time.sleep(0.1)
                             kbu.do_press(Key.left)
                             time.sleep(0.1)
-                            kbu.do_press_with_time('x', 4000, 50)
+                            kbu.do_press_with_time('x', 5000, 50)
                             logger.warning("中间长按x 按完x了")
                         continue
                     continue
                 # 逻辑处理-出现再次挑战<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
                 # 逻辑处理-什么都没有>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                if (not gold_xywh_list and not loot_xywh_list and not monster_xywh_list and not ball_xywh_list and not boss_xywh_list and not forward_exists and not continue_exist) and not ball_appeared:  # todo boss
+                if (not gold_xywh_list and not loot_xywh_list and not monster_xywh_list and not ball_xywh_list and not boss_xywh_list and not forward_exists and not continue_exist) and not ball_appeared: #todo boss
                     pause_event.wait()  # 暂停
                     # 情况1:漏怪了,并且视野内看不到怪了,随机久了肯定能看到怪
                     if not door_absence_time:
@@ -1059,7 +1079,7 @@ def main_script():
                 time.sleep(0.1)
                 kbu.do_press(Key.left)
                 time.sleep(0.1)
-                kbu.do_press_with_time('x', 2000, 0)
+                kbu.do_press_with_time('x', 5000 if hole_appeared == 4 else 2000, 50),
                 logger.warning("最后长按x 按完x了")
 
             pause_event.wait()  # 暂停
@@ -1127,12 +1147,12 @@ def main_script():
         if fight_count > 0:
             logger.info('刷了图之后,进行整理....')
             pause_event.wait()  # 暂停
-            # 完成每日任务
-            finish_daily_challenge(x, y)
-
-            pause_event.wait()  # 暂停
             # 瞬移到赛丽亚房间
             teleport_to_sailiya(x, y)
+
+            pause_event.wait()  # 暂停
+            # # 完成每日任务
+            # finish_daily_challenge(x, y)
 
             pause_event.wait()  # 暂停
             # 转移材料到账号金库
