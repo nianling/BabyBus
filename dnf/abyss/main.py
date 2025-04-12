@@ -62,7 +62,7 @@ pathlib.PosixPath = pathlib.WindowsPath
 
 #  >>>>>>>>>>>>>>>> 运行时相关的参数 >>>>>>>>>>>>>>>>
 
-show = True  # 查看检测结果
+show = False  # 查看检测结果
 
 # 脚本执行完之后,结束游戏
 quit_game_after_finish = False
