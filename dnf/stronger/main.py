@@ -3,7 +3,6 @@
 __author__ = "廿陵 <wemean66@gmail.com> (GitHub: @nianling)"
 __version__ = '1.0'
 
-
 import itertools
 import math
 import os
@@ -72,7 +71,6 @@ from utils.keyboard_move_controller import MovementController
 from utils.utilities import plot_one_box
 from utils.window_utils import WindowCapture
 from dnf.stronger.path_finder import PathFinder
-
 
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
@@ -520,7 +518,7 @@ def main_script():
                 kbu.do_press(Key.esc)
                 time.sleep(0.2)
                 break
-            
+
             pause_event.wait()  # 暂停
 
             fight_count += 1
@@ -682,7 +680,7 @@ def main_script():
                     hero_pos_is_stable = fq.coords_is_stable(threshold=10, window_size=10)
                     if hero_pos_is_stable and not sss_appeared and stuck_room_idx is None:
                         random_direct = random.choice(random.choice([kbu.single_direct, kbu.double_direct]))
-                        logger.warning('可能卡住不能移动了{},随机跑个方向看看-->{}',hero_xywh, random_direct)  # todo 方向处理
+                        logger.warning('可能卡住不能移动了{},随机跑个方向看看-->{}', hero_xywh, random_direct)  # todo 方向处理
                         kbd_current_direction = mover.get_current_direction()
                         # 先看是不是在门上
                         if len(door_xywh_list + door_boss_xywh_list) > 0 and exist_near(hero_xywh, door_xywh_list + door_boss_xywh_list, 100):
@@ -699,8 +697,8 @@ def main_script():
                                 logger.debug("人在上面")
                                 random_direct = random.choice(list(filter(lambda x1: x1 != "UP" and x1 != kbd_current_direction, kbu.single_direct)))
                         else:
-                            logger.error(f"x轴上位置：{hero_xywh[0]/img0.shape[1]}")
-                            logger.error(f"y轴上位置：{hero_xywh[1]/img0.shape[0]}")
+                            logger.error(f"x轴上位置：{hero_xywh[0] / img0.shape[1]}")
+                            logger.error(f"y轴上位置：{hero_xywh[1] / img0.shape[0]}")
                             if hero_xywh[0] > img0.shape[1] * 3 // 4 and (mover.get_current_direction() is None or "RIGHT" in mover.get_current_direction()):
                                 logger.debug("人在右边2")
                                 mover.move(target_direction="LEFT")
@@ -822,7 +820,7 @@ def main_script():
                                                 and abs(role_attack_center[1] - monster_box[1]) < 100
                                                 ) or (
                                                        monster_box[0] < role_attack_center[0]
-                                                       and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x*0.65)
+                                                       and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x * 0.65)
                                                        and abs(role_attack_center[1] - monster_box[1]) < 100
                                                )
                         else:
@@ -831,7 +829,7 @@ def main_script():
                                                 and abs(role_attack_center[1] - monster_box[1]) < 100
                                                 ) or (
                                                    (monster_box[0] > role_attack_center[0]
-                                                    and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x*0.65)
+                                                    and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x * 0.65)
                                                     and abs(role_attack_center[1] - monster_box[1]) < 100
                                                     )
                                                )
@@ -938,7 +936,7 @@ def main_script():
                         loot_xywh_list = []
                         gold_xywh_list = []
                         wait_for_next_room = hero_xywh and (
-                            (door_xywh_list or door_boss_xywh_list)  and not monster_xywh_list and not elite_monster_xywh_list and not boss_xywh_list and not loot_xywh_list and not gold_xywh_list)
+                                (door_xywh_list or door_boss_xywh_list) and not monster_xywh_list and not elite_monster_xywh_list and not boss_xywh_list and not loot_xywh_list and not gold_xywh_list)
                     elif stuck_room_idx is not None and stuck_room_idx != current_room:  # 已经被卡住了，且不在被卡房间，（出去了，置空）
                         stuck_room_idx = None
                         room_idx_list.enqueue(current_room)  # 记录识别的房间位置
@@ -1038,7 +1036,7 @@ def main_script():
                             # todo 防止走向目标门的过程中,误入其他门(主要是左右跑的时候,误入了上方或下方的门)
                             mover.move(target_direction="RIGHT")
                             continue
-                        if next_room_direction == 'LEFT' and ( not door_box or door_box[0] > img0.shape[1] // 5):  # 左侧四分之一还没有门出现,继续往左
+                        if next_room_direction == 'LEFT' and (not door_box or door_box[0] > img0.shape[1] // 5):  # 左侧四分之一还没有门出现,继续往左
                             logger.debug("目标房间在左边---->左侧四分之一还没有门出现,继续往左")
                             mover.move(target_direction="LEFT")
                             continue
@@ -1128,7 +1126,7 @@ def main_script():
                         skill_util.cast_skill(skill_name)
                         time.sleep(0.9)
                         continue
-                    
+
                     pause_event.wait()  # 暂停
                     # 目标在角色右上方
                     if monster_box[1] - role_attack_center[1] < 0 and monster_box[0] - role_attack_center[0] > 0:
@@ -1213,7 +1211,7 @@ def main_script():
 
                         continue
                     elif sss_appeared and collect_loot_pressed and time.time() - collect_loot_pressed_time < 10:
-                        logger.warning(f"已经预先按下移动物品了，10s内忽略拾取...{int(10-(time.time() - collect_loot_pressed_time))}")
+                        logger.warning(f"已经预先按下移动物品了，10s内忽略拾取...{int(10 - (time.time() - collect_loot_pressed_time))}")
                         continue
 
                     # 掉落物在范围内,直接拾取
@@ -1359,19 +1357,18 @@ def main_script():
                         continue
                     continue
                 # 逻辑处理-出现再次挑战<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                
-                
+
                 # 逻辑处理-出现翻牌>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                 if card_num >= 3:
                     if not card_appear_time:
-                        card_appear_time = time.time()    
-                    
-                    # 如果商店开着,需要esc关闭
+                        card_appear_time = time.time()
+
+                        # 如果商店开着,需要esc关闭
                     if shop_mystery_exist:
                         # cv2.imwrite(f'mystery2_{time.time()}.png',img0)
                         buy_from_mystery_shop(img0, x, y)
                         logger.error("翻牌时有神秘商店，处理完毕")
-                    
+
                     if time.time() - card_appear_time > 0.5:
                         if not card_esc_time:
                             card_esc_time = time.time()
@@ -1396,7 +1393,7 @@ def main_script():
 
                 # 逻辑处理-什么都没有>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                 if (not gold_xywh_list and not loot_xywh_list and not monster_xywh_list and not elite_monster_xywh_list and not boss_xywh_list
-                        and not door_xywh_list and not door_boss_xywh_list and card_num < 3 and not continue_exist) and not sss_appeared: #todo boss
+                        and not door_xywh_list and not door_boss_xywh_list and card_num < 3 and not continue_exist) and not sss_appeared:  # todo boss
                     pause_event.wait()  # 暂停
                     # 情况1:漏怪了,并且视野内看不到怪了,随机久了肯定能看到怪 todo 还是得做？匹配
                     # 情况2:翻牌附近

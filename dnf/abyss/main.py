@@ -914,7 +914,7 @@ def main_script():
                         time.sleep(0.1)
                         kbu.do_press(Key.left)
                         time.sleep(0.1)
-                        kbu.do_press_with_time('x', 5000 if hole_appeared == 4 else 2000, 50),
+                        kbu.do_press_with_time('x', 5000 if hole_appeared else 2000, 50),
                         logger.warning("预先长按x 按完x了")
 
                         continue
@@ -1079,7 +1079,7 @@ def main_script():
                 time.sleep(0.1)
                 kbu.do_press(Key.left)
                 time.sleep(0.1)
-                kbu.do_press_with_time('x', 5000 if hole_appeared == 4 else 2000, 50),
+                kbu.do_press_with_time('x', 5000 if hole_appeared else 2000, 50),
                 logger.warning("最后长按x 按完x了")
 
             pause_event.wait()  # 暂停
