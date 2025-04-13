@@ -45,7 +45,8 @@ from dnf.stronger.player import (
     show_right_bottom_icon,
     buy_from_mystery_shop,
     goto_abyss,
-    buy_tank_from_mystery_shop
+    buy_tank_from_mystery_shop,
+    buy_bell_from_mystery_shop
 )
 from logger_config import logger
 from dnf.stronger.role_list import get_role_config_list
@@ -75,6 +76,8 @@ last_role_no = 1
 
 # 买罐子
 buy_tank_type = 2  # buy_type: 0不买，1买传说，2买史诗，3买史诗+传说
+# 买铃铛
+buy_bell_ticket = False
 
 weights = os.path.join(config_.project_base_path, 'weights/abyss.04032147.best.pt')  # 模型存放的位置
 # <<<<<<<<<<<<<<<< 运行时相关的参数 <<<<<<<<<<<<<<<<
@@ -999,15 +1002,15 @@ def main_script():
                     # 不管了,全部释放掉
                     mover._release_all_keys()
 
+                    pause_event.wait()
                     # 神秘商店
                     if shop_mystery_exist:
                         buy_from_mystery_shop(img0, x, y)
                         time.sleep(1)
                         buy_tank_from_mystery_shop(img0, x, y, buy_tank_type)
-                        winsound.PlaySound("SystemHand", winsound.SND_ALIAS)
-                        if pause_event.is_set():
-                            logger.warning(f"有神秘商店，暂停运行...")
-                            pause_event.clear()  # 暂停
+                        if buy_bell_ticket:
+                            time.sleep(1)
+                            buy_bell_from_mystery_shop(img0, x, y)
 
                         pause_event.wait()
                         kbu.do_press(Key.esc)
