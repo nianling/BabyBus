@@ -68,3 +68,22 @@ def compare_images(img1, img2):
     similarity_score = ssim(gray1, gray2)
 
     return similarity_score
+
+
+def match_template_with_confidence(image, template, threshold=0.8):
+    """
+    返回矩形的左上角、右下角坐标以及对应的置信度，可能有多个矩形。
+    [((x1, y1), (x2, y2), confidence)]
+    """
+    # 使用模板匹配方法计算匹配结果
+    result = cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
+
+    # 找到匹配得分大于等于阈值的位置
+    loc = np.where(result >= threshold)
+
+    matches = []
+    for pt in zip(*loc[::-1]):  # 遍历匹配点
+        match_score = result[pt[1], pt[0]]  # 获取当前匹配点的置信度
+        bottom_right = (pt[0] + template.shape[1], pt[1] + template.shape[0])  # 计算右下角坐标
+        matches.append((pt, bottom_right, match_score))  # 将左上角、右下角和置信度添加到结果列表
+    return matches
