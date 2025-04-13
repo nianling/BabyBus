@@ -21,7 +21,7 @@ from logger_config import logger
 from utils import keyboard_utils as kbu
 from utils import mouse_utils as mu
 from utils import window_utils as window_utils
-from utils.utilities import match_template, compare_images
+from utils.utilities import match_template, compare_images, match_template_one, match_template_with_confidence
 
 reader = None
 
@@ -678,10 +678,10 @@ def buy_from_mystery_shop(full_screen, x, y):
     template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/ticket.png'),
                                 cv2.IMREAD_COLOR)
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
-    matches = match_template(gray_screenshot, template_again_gray, threshold=0.85)
+    matches = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
     logger.debug(f"发现门票{len(matches)}个。{matches}")
 
-    for top_left, bottom_right in matches:
+    for top_left, bottom_right, _ in matches:
         x1, y1 = top_left
         x2, y2 = bottom_right
         center_x = int((x1 + x2) / 2)
@@ -695,23 +695,40 @@ def buy_from_mystery_shop(full_screen, x, y):
         logger.debug("购买门票一次")
 
 
-def buy_tank_from_mystery_shop(full_screen, x, y):
+def buy_tank_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
     """
     神秘商店购买
+    buy_type: 0，不买，1买传说，2买史诗，3买史诗+传说
     """
     logger.debug('出现神秘商店！')
     gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
     template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/tank_legend.png'), cv2.IMREAD_COLOR)
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
-    matches = match_template(gray_screenshot, template_again_gray, threshold=0.85)
+    matches = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
     logger.debug(f"发现罐子{len(matches)}个。{matches}")
 
     if len(matches) > 0:
         cv2.imwrite(f'tank_{time.time()}.jpg', full_screen)
 
-    for top_left, bottom_right in matches:
+    for top_left, bottom_right, _ in matches:
         x1, y1 = top_left
         x2, y2 = bottom_right
+        tank_crop = full_screen[y1:y2, x1:x2]
+        avg_b, avg_g, avg_r = cv2.mean(tank_crop)[:3]
+        weighted_average = 0.299 * avg_r + 0.587 * avg_g + 0.114 * avg_b
+        logger.debug(f"buy_type：{buy_type}， {weighted_average}")
+        # buy_type: 0，不买，1买传说，2买史诗，3买史诗+传说
+        if buy_type == 0:
+            logger.debug(f"不买")
+            return
+        if buy_type == 1 and weighted_average > 90:
+            logger.debug(f"不买")
+            return
+        if buy_type == 2 and weighted_average < 90:
+            logger.debug(f"不买")
+            return
+        if buy_type == 3:
+            ...
         center_x = int((x1 + x2) / 2)
         center_y = int((y1 + y2) / 2)
         mu.do_move_to(x + center_x, y + center_y)
