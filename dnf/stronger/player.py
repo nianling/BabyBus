@@ -707,9 +707,6 @@ def buy_tank_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
     matches = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
     logger.debug(f"发现罐子{len(matches)}个。{matches}")
 
-    if len(matches) > 0:
-        cv2.imwrite(f'tank_{time.time()}.jpg', full_screen)
-
     for top_left, bottom_right, _ in matches:
         x1, y1 = top_left
         x2, y2 = bottom_right
