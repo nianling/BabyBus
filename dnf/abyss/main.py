@@ -74,7 +74,7 @@ first_role_no = 1
 last_role_no = 1
 
 # 买罐子
-but_tank_type = 2  # buy_type: 0不买，1买传说，2买史诗，3买史诗+传说
+buy_tank_type = 2  # buy_type: 0不买，1买传说，2买史诗，3买史诗+传说
 
 weights = os.path.join(config_.project_base_path, 'weights/abyss.04032147.best.pt')  # 模型存放的位置
 # <<<<<<<<<<<<<<<< 运行时相关的参数 <<<<<<<<<<<<<<<<
@@ -1003,7 +1003,7 @@ def main_script():
                     if shop_mystery_exist:
                         buy_from_mystery_shop(img0, x, y)
                         time.sleep(1)
-                        buy_tank_from_mystery_shop(img0, x, y, but_tank_type)
+                        buy_tank_from_mystery_shop(img0, x, y, buy_tank_type)
                         winsound.PlaySound("SystemHand", winsound.SND_ALIAS)
                         if pause_event.is_set():
                             logger.warning(f"有神秘商店，暂停运行...")
