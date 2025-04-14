@@ -19,8 +19,10 @@ from utils import keyboard_utils as kbu
 x1, y1 = 433, 533
 x2, y2 = 648, 593
 
-skill_height = int((y2 - y1) / 2)
-skill_width = int((x2 - x1) / 7)
+# skill_height = int((y2 - y1) / 2)
+# skill_width = int((x2 - x1) / 7)
+skill_height = 28
+skill_width = 28
 
 skill_dict = {
     "q": (x1, y1),
@@ -128,14 +130,17 @@ def skill_ready_warm_colors(skill_name, img):
     # 都>0.4 都小于0.3
     if skill_name == "x":
         return True
-
-    x, y = skill_dict[skill_name][0], skill_dict[skill_name][1]
+    # x, y = skill_dict[skill_name][0], skill_dict[skill_name][1]
+    keys_list = list(skill_dict.keys())
+    index = keys_list.index(skill_name)
+    x = 434 + (28 + 3) * (index % 7)
+    y = 534 + (28 + 3) * (index // 7)
     skill_img = img[y:y + skill_height, x:x + skill_width]
 
     warm_ratio = score_by_warm(skill_img)
 
     # 判断技能是否可用
-    is_ready = warm_ratio > 0.35
+    is_ready = warm_ratio > 0.2
 
     # print(f"技能 {skill_name} - 暖色调比例: {warm_ratio:.2f}")
     return is_ready
