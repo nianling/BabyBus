@@ -648,7 +648,7 @@ def main_script():
                         if not collect_loot_pressed and (sss_exist or continue_exist or shop_exist or shop_mystery_exist):
                             mover.move(target_direction="LEFT")
                             # time.sleep(0.1)
-                    # continue
+                    continue
 
                 # ############################### 判断-准备打怪 ######################################
                 wait_for_attack = hero_xywh and (monster_xywh_list or boss_xywh_list or ball_xywh_list) and not fight_victory
@@ -726,8 +726,7 @@ def main_script():
                 material_is_gold = False
                 if wait_for_pickup:
                     # 距离最近的掉落物
-                    material_box, material_min_distance = get_closest_obj(
-                        itertools.chain(loot_xywh_list, gold_xywh_list), det.hero_xywh)
+                    material_box, material_min_distance = get_closest_obj(itertools.chain(loot_xywh_list, gold_xywh_list), det.hero_xywh)
                     if material_box in gold_xywh_list:
                         material_is_gold = True
                     if show and material_box:
