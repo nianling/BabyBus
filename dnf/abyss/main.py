@@ -111,16 +111,10 @@ color_yellow = (0, 255, 255)  # 黄色
 color_purple = (255, 0, 255)  # 紫色
 
 # ---------------------------------------------------------
-device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 model = YOLO(weights)
-img_size = 640  # 输入进模型的尺寸
-half = device.type != 'cpu'
-# if half:
+device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+# if device.type != 'cpu':
 #     model.half()  # to FP16
-conf_thres = 0.3  # NMS非极大值抑制的置信度过滤
-iou_thres = 0.2  # NMS非极大值抑制的IOU阈值
-classes = None
-agnostic_nms = False  # 不同类别的NMS非极大值抑制时也参数过滤
 names = [
     'boss',
     'card',
@@ -142,16 +136,17 @@ names = [
 ]
 colors = [[random.randint(0, 255) for _ in range(3)] for _ in range(len(names))]
 # ----------------------------------------------------------
-b_h = 120  # boss高度处理 178 130
-m_h = 57  # 普通怪高度处理
+boss_h = 120  # boss高度处理
+monster_h = 57  # 普通怪高度处理
 em_h = 100  # 精英怪高度处理
-d_h = 32  # 门高度处理
-l_h = 0  # 掉落物高度处理  标准27 todo 高度
+door_h = 32  # 门高度处理
+loot_h = 0  # 掉落物高度处理
 
-th_x = 25  # 捡材料，x的阈值  30,45,50 (标准应该是左右50) 30
-th_y = 15  # 捡材料，y的阈值  30  (标准应该是上下25) 18
-att_x = 166  # 打怪时，x的阈值
-att_y = 40  # 打怪时，y的阈值
+attack_x = 166  # 打怪命中范围，x轴距离
+attack_y = 40  # 打怪命中范围，y轴距离
+door_hit_y = 15  # 过门命中范围，y轴距离
+pick_up_x = 25  # 捡材料命中范围，x轴距离
+pick_up_y = 15  # 捡材料命中范围，y轴距离
 
 # <<<<<<<<<<<<<<<< 脚本所需要的变量 <<<<<<<<<<<<<<<<
 mover = MovementController()
@@ -190,7 +185,7 @@ def display_results():
 #  >>>>>>>>>>>>>>>> 方法定义 >>>>>>>>>>>>>>>>
 
 def on_press(key):
-    global stop_be_pressed, continue_pressed
+    global stop_be_pressed, continue_pressed, x, y
     if key in dnf.key_stop_script or key in dnf.key_pause_script:
         current_keys_control.add(key)
         if all(k in current_keys_control for k in dnf.key_stop_script):
@@ -212,6 +207,10 @@ def on_press(key):
                 mover._release_all_keys()
             else:
                 logger.warning(f"按下 [{formatted_keys}] 键，唤醒运行...")
+                x, y, _, _ = window_utils.get_window_rect(handle)
+                mu.do_smooth_move_to(x + 500, y + 300)
+                time.sleep(0.1)
+                mu.do_click(Button.left)
                 continue_pressed = True
                 pause_event.set()  # 继续
             time.sleep(0.5)  # 防止重复触发
@@ -232,7 +231,8 @@ def start_keyboard_listener():
         listener.join()
 
 
-def analyse_det_result(results, hero_height, img):
+def analyse_det_result(results, hero_height, img) -> DetResult:
+    global show
     if results is not None and len(results):
         boss_xywh_list = []
         monster_xywh_list = []
@@ -279,7 +279,7 @@ def analyse_det_result(results, hero_height, img):
                 boss_xywh_list.append(xywh)
 
             if names[cls] == "monster":
-                xywh[1] += m_h
+                xywh[1] += monster_h
 
                 monster_xywh_list.append(xywh)
 
@@ -290,25 +290,25 @@ def analyse_det_result(results, hero_height, img):
                 elite_monster_xywh_list.append(xywh)
 
             if names[cls] == "door":
-                xywh[1] += d_h
+                xywh[1] += door_h
 
                 door_xywh_list.append(xywh)
 
             if names[cls] == "door-boss":
-                xywh[1] += d_h
+                xywh[1] += door_h
 
                 door_boss_xywh_list.append(xywh)
 
             if names[cls] == "loot":
-                xywh[1] += l_h
-                # todo 处理半拉子框的情况
+                xywh[1] += loot_h
+                # 处理半拉子框的情况
                 if xywh[2] > 111 and xywh[3] < 110:
                     if (xyxy[1] + 60) > xywh[1]:
                         xywh[1] = xyxy[1] + 60
                 loot_xywh_list.append(xywh)
 
             if names[cls] == 'gold':
-                xywh[1] += l_h
+                xywh[1] += loot_h
                 if xywh[2] > 111 and xywh[3] < 110:
                     if (xyxy[1] + 60) > xywh[1]:
                         xywh[1] = xyxy[1] + 60
@@ -341,7 +341,7 @@ def analyse_det_result(results, hero_height, img):
                 ball_xywh_list.append(xywh)
 
             if names[cls] == "hole":
-                xywh[1] += d_h
+                xywh[1] += door_h
                 hole_xywh_list.append(xywh)
 
             # 在原图上画框
@@ -371,6 +371,34 @@ def analyse_det_result(results, hero_height, img):
         res.forward_exists = forward_exists
         res.ball_xywh_list = ball_xywh_list
         res.hole_xywh_list = hole_xywh_list
+
+        # 给角色绘制定位圆点,方便查看
+        if show:
+            if res.hero_xywh:
+                # 推理后的中心
+                cv2.circle(img, (int(hero_xywh[0]), int(hero_xywh[1] - hero_height)), 1, color_red, 2)
+                # 处理后的中心
+                cv2.circle(img, (int(hero_xywh[0]), int(hero_xywh[1])), 1, color_green, 2)
+
+            for a in (res.loot_xywh_list + res.gold_xywh_list):
+                # 掉落物
+                cv2.circle(img, (int(a[0]), int(a[1] - loot_h)), 1, color_red, 2)
+                cv2.circle(img, (int(a[0]), int(a[1])), 1, color_green, 2)
+
+            for a in res.ball_xywh_list:
+                # 球
+                cv2.circle(img, (int(a[0]), int(a[1] - a[3])), 1, color_red, 2)
+                cv2.circle(img, (int(a[0]), int(a[1])), 1, color_green, 2)
+
+            for a in res.monster_xywh_list:
+                # 怪
+                cv2.circle(img, (int(a[0]), int(a[1])), 1, color_green, 2)
+                cv2.circle(img, (int(a[0]), int(a[1] - monster_h)), 1, color_red, 2)
+
+            for a in res.boss_xywh_list:
+                # boss
+                cv2.circle(img, (int(a[0]), int(a[1])), 1, color_green, 2)
+                cv2.circle(img, (int(a[0]), int(a[1] - boss_h)), 1, color_red, 2)
 
         return res
 
@@ -450,16 +478,16 @@ def main_script():
             # 传送到风暴门口
             from_sailiya_to_abyss(x, y)
             logger.debug("先向上移，保持顶到最上位置。。")
-            kbu.do_press_with_time(Key.up, 3000, 50)
+            kbu.do_press_with_time(Key.up, 1500, 50)
             # 让角色走到最左面，进图选择页面
             logger.debug("再向左走，进入选择地图页面。。")
-            kbu.do_press_with_time(Key.left, 5000, 300)
+            kbu.do_press_with_time(Key.left, 2500, 300)
 
             # 先向右移动一点，以防一传过来的就离得很近
             logger.debug("向右移一点，以防一传过来的就离得很近。。")
             kbu.do_press_with_time(Key.right, 1500, 50)
             logger.debug("向左走向左走，进入选择地图页面。。")
-            kbu.do_press_with_time(Key.left, 3000, 300)
+            kbu.do_press_with_time(Key.left, 2000, 300)
             time.sleep(0.5)
             time.sleep(1.5)  # 先等自己移动到深渊图
 
@@ -554,10 +582,10 @@ def main_script():
                 # 执行推理
                 results = model.predict(
                     source=img0,
-                    imgsz=img_size,
-                    conf=conf_thres,
-                    iou=iou_thres,
-                    classes=classes,
+                    device=device,
+                    imgsz=640,
+                    conf=0.7,
+                    iou=0.2,
                     verbose=False
                 )
 
@@ -621,34 +649,6 @@ def main_script():
                             mover.move(target_direction="LEFT")
                             # time.sleep(0.1)
                     # continue
-
-                # 给角色绘制定位圆点,方便查看
-                if show:
-                    if det.hero_xywh:
-                        # 推理后的中心
-                        cv2.circle(img4show, (int(hero_xywh[0]), int(hero_xywh[1] - h_h)), 1, color_red, 2)
-                        # 处理后的中心
-                        cv2.circle(img4show, (int(hero_xywh[0]), int(hero_xywh[1])), 1, color_green, 2)
-
-                    for a in (loot_xywh_list + gold_xywh_list):
-                        # 掉落物
-                        cv2.circle(img4show, (int(a[0]), int(a[1] - l_h)), 1, color_red, 2)
-                        cv2.circle(img4show, (int(a[0]), int(a[1])), 1, color_green, 2)
-
-                    for a in ball_xywh_list:
-                        # 球
-                        cv2.circle(img4show, (int(a[0]), int(a[1] - a[3])), 1, color_red, 2)
-                        cv2.circle(img4show, (int(a[0]), int(a[1])), 1, color_green, 2)
-
-                    for a in monster_xywh_list:
-                        # 怪
-                        cv2.circle(img4show, (int(a[0]), int(a[1])), 1, color_green, 2)
-                        cv2.circle(img4show, (int(a[0]), int(a[1] - m_h)), 1, color_red, 2)
-
-                    for a in boss_xywh_list:
-                        # boss
-                        cv2.circle(img4show, (int(a[0]), int(a[1])), 1, color_green, 2)
-                        cv2.circle(img4show, (int(a[0]), int(a[1] - b_h)), 1, color_red, 2)
 
                 # ############################### 判断-准备打怪 ######################################
                 wait_for_attack = hero_xywh and (monster_xywh_list or boss_xywh_list or ball_xywh_list) and not fight_victory
@@ -734,8 +734,7 @@ def main_script():
                         # 给目标掉落物画一个点
                         cv2.circle(img4show, (int(material_box[0]), int(material_box[1])), 2, color_blue, 3)
                     # 材料处于拾取范围
-                    loot_in_range = abs(material_box[1] - hero_xywh[1]) < th_y and abs(
-                        material_box[0] - hero_xywh[0]) < th_x
+                    loot_in_range = abs(material_box[1] - hero_xywh[1]) < pick_up_y and abs(material_box[0] - hero_xywh[0]) < pick_up_x
                     if show and loot_in_range:
                         # 材料处于拾取范围,给角色一个标记
                         cv2.circle(img4show, (int(hero_xywh[0]), int(hero_xywh[1])), 10, color_yellow, 2)
@@ -766,7 +765,7 @@ def main_script():
                         # 目标在角色的右上方
                         if door_box[1] - hero_xywh[1] < 0 and door_box[0] - hero_xywh[0] > 0:
                             # y方向上处于范围内,只需要x方向移动
-                            if abs(door_box[1] - hero_xywh[1]) < th_y:
+                            if abs(door_box[1] - hero_xywh[1]) < door_hit_y:
                                 # print("y方向上处于范围内,只需要x方向移动")
                                 mover.move(target_direction="RIGHT")
                             # x轴上的距离比较远,斜方向移动
@@ -779,7 +778,7 @@ def main_script():
                         # 目标在角色的左上方
                         elif door_box[1] - hero_xywh[1] < 0 and door_box[0] - hero_xywh[0] < 0:
                             # y方向上处于范围内,只需要x方向移动
-                            if abs(door_box[1] - hero_xywh[1]) < th_y:
+                            if abs(door_box[1] - hero_xywh[1]) < door_hit_y:
                                 mover.move(target_direction="LEFT")
                             # x轴上的距离比较远,斜方向移动
                             elif abs(hero_xywh[1] - door_box[1]) < abs(hero_xywh[0] - door_box[0]):
@@ -790,7 +789,7 @@ def main_script():
                         # 目标在角色的左下方
                         elif door_box[1] - hero_xywh[1] > 0 and door_box[0] - hero_xywh[0] < 0:
                             # y方向上处于范围内,只需要x方向移动
-                            if abs(door_box[1] - hero_xywh[1]) < th_y:
+                            if abs(door_box[1] - hero_xywh[1]) < door_hit_y:
                                 mover.move(target_direction="LEFT")
                             # x轴上的距离比较远,斜方向移动
                             elif abs(door_box[1] - hero_xywh[1]) < abs(hero_xywh[0] - door_box[0]):
@@ -801,7 +800,7 @@ def main_script():
                         # 目标在角色的右下方
                         elif door_box[1] - hero_xywh[1] > 0 and door_box[0] - hero_xywh[0] > 0:
                             # y方向上处于范围内,只需要x方向移动
-                            if abs(door_box[1] - hero_xywh[1]) < th_y:
+                            if abs(door_box[1] - hero_xywh[1]) < door_hit_y:
                                 mover.move(target_direction="RIGHT")
                             # x轴上的距离比较远,斜方向移动
                             elif abs(door_box[1] - hero_xywh[1]) < abs(door_box[0] - hero_xywh[0]):
@@ -849,7 +848,7 @@ def main_script():
                     # 目标在角色右上方
                     if monster_box[1] - role_attack_center[1] < 0 and monster_box[0] - role_attack_center[0] > 0:
                         # y方向已经处于攻击范围,只需要x方向移动
-                        if abs(monster_box[1] - role_attack_center[1]) < att_y:
+                        if abs(monster_box[1] - role_attack_center[1]) < attack_y:
                             mover.move(target_direction="RIGHT")
                         # x轴上的距离比较远,斜方向移动
                         elif abs(role_attack_center[1] - monster_box[1]) < abs(monster_box[0] - role_attack_center[0]):
@@ -861,7 +860,7 @@ def main_script():
                     # 目标在角色左上方
                     elif monster_box[1] - role_attack_center[1] < 0 and monster_box[0] - role_attack_center[0] < 0:
                         # y方向已经处于攻击范围,只需要x方向移动
-                        if abs(monster_box[1] - role_attack_center[1]) < att_y:
+                        if abs(monster_box[1] - role_attack_center[1]) < attack_y:
                             mover.move(target_direction="LEFT")
                         # x轴上的距离比较远,斜方向移动
                         elif role_attack_center[1] - monster_box[1] < role_attack_center[0] - monster_box[0]:
@@ -873,7 +872,7 @@ def main_script():
                     # 目标在角色左下方
                     elif monster_box[1] - role_attack_center[1] > 0 and monster_box[0] - role_attack_center[0] < 0:
                         # y方向已经处于攻击范围,只需要x方向移动
-                        if abs(monster_box[1] - role_attack_center[1]) < att_y:
+                        if abs(monster_box[1] - role_attack_center[1]) < attack_y:
                             mover.move(target_direction="LEFT")
                         # x轴上的距离比较远,斜方向移动
                         elif monster_box[1] - role_attack_center[1] < role_attack_center[0] - monster_box[0]:
@@ -885,7 +884,7 @@ def main_script():
                     # 目标在角色右下方
                     elif monster_box[1] - role_attack_center[1] > 0 and monster_box[0] - role_attack_center[0] > 0:
                         # y方向已经处于攻击范围,只需要x方向移动
-                        if abs(monster_box[1] - role_attack_center[1]) < att_y:
+                        if abs(monster_box[1] - role_attack_center[1]) < attack_y:
                             mover.move(target_direction="RIGHT")
                         # x轴上的距离比较远,斜方向移动
                         elif monster_box[1] - role_attack_center[1] < monster_box[0] - role_attack_center[0]:
@@ -924,10 +923,10 @@ def main_script():
                         logger.warning("预先长按x 按完x了")
 
                         continue
-                    elif collect_loot_pressed and time.time() - collect_loot_pressed_time < 10:
+                    elif collect_loot_pressed and time.time() - collect_loot_pressed_time < 7:
                         logger.warning(f"已经预先按下移动物品了，10s内忽略拾取...{int(10 - (time.time() - collect_loot_pressed_time))}")
                         continue
-                    elif collect_loot_pressed and time.time() - collect_loot_pressed_time >= 10:
+                    elif collect_loot_pressed and time.time() - collect_loot_pressed_time >= 7:
                         logger.warning(f"已经预先按下移动物品了，10已经过去了...")
                         # 掉落物在范围内,直接拾取
                         if loot_in_range:
@@ -950,7 +949,7 @@ def main_script():
                     # 目标在角色的上右方
                     if material_box[1] - hero_xywh[1] < 0 and material_box[0] - hero_xywh[0] > 0:
                         # y方向已经处于攻击范围, 只需要x方向移动
-                        if abs(material_box[1] - hero_xywh[1]) < th_y:
+                        if abs(material_box[1] - hero_xywh[1]) < pick_up_y:
                             mover.move_stop_immediately(target_direction="RIGHT", move_mode=move_mode, stop=slow_pickup)
                         # x轴上的距离比较远,斜方向移动
                         elif hero_xywh[1] - material_box[1] < material_box[0] - hero_xywh[0]:
@@ -962,7 +961,7 @@ def main_script():
                     # 目标在角色的左上方
                     elif material_box[1] - hero_xywh[1] < 0 and material_box[0] - hero_xywh[0] < 0:
                         # y方向已经处于攻击范围, 只需要x方向移动
-                        if abs(material_box[1] - hero_xywh[1]) < th_y:
+                        if abs(material_box[1] - hero_xywh[1]) < pick_up_y:
                             mover.move_stop_immediately(target_direction="LEFT", move_mode=move_mode, stop=slow_pickup)
                         # x轴上的距离比较远,斜方向移动
                         elif hero_xywh[1] - material_box[1] < hero_xywh[0] - material_box[0]:
@@ -974,7 +973,7 @@ def main_script():
                     # 目标在角色的左下方
                     elif material_box[1] - hero_xywh[1] > 0 and material_box[0] - hero_xywh[0] < 0:
                         # y方向已经处于攻击范围, 只需要x方向移动
-                        if abs(material_box[1] - hero_xywh[1]) < th_y:
+                        if abs(material_box[1] - hero_xywh[1]) < pick_up_y:
                             mover.move_stop_immediately(target_direction="LEFT", move_mode=move_mode, stop=slow_pickup)
                         # x轴上的距离比较远,斜方向移动
                         elif material_box[1] - hero_xywh[1] < hero_xywh[0] - material_box[0]:
@@ -985,7 +984,7 @@ def main_script():
                     # 目标在角色的右下方
                     elif material_box[1] - hero_xywh[1] > 0 and material_box[0] - hero_xywh[0] > 0:
                         # y方向已经处于攻击范围, 只需要x方向移动
-                        if abs(material_box[1] - hero_xywh[1]) < th_y:
+                        if abs(material_box[1] - hero_xywh[1]) < pick_up_y:
                             mover.move_stop_immediately(target_direction="RIGHT", move_mode=move_mode, stop=slow_pickup)
                         # x轴上的距离比较远,斜方向移动
                         elif material_box[1] - hero_xywh[1] < material_box[0] - hero_xywh[0]:
