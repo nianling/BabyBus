@@ -46,7 +46,8 @@ from dnf.stronger.player import (
     buy_from_mystery_shop,
     goto_abyss,
     buy_tank_from_mystery_shop,
-    buy_bell_from_mystery_shop
+    buy_bell_from_mystery_shop,
+    buy_shanshanming_from_mystery_shop
 )
 from logger_config import logger
 from dnf.stronger.role_list import get_role_config_list
@@ -78,6 +79,8 @@ last_role_no = 1
 buy_tank_type = 2  # buy_type: 0不买，1买传说，2买史诗，3买史诗+传说
 # 买铃铛
 buy_bell_ticket = False
+# 买闪闪明
+buy_shanshanming = False
 
 weights = os.path.join(config_.project_base_path, 'weights/abyss.04032147.best.pt')  # 模型存放的位置
 # <<<<<<<<<<<<<<<< 运行时相关的参数 <<<<<<<<<<<<<<<<
@@ -172,7 +175,7 @@ def display_results():
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         except Exception as e:
-            print(f"展示显示报错: {e}")
+            logger.error(f"展示显示报错: {e}")
 
     # 清理资源
     cv2.destroyAllWindows()
@@ -898,7 +901,7 @@ def main_script():
                 # 逻辑处理-出现菜单>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                 if menu_exist:
                     kbu.do_press(Key.esc)
-                    print("关闭菜单")
+                    logger.debug("关闭菜单")
                     time.sleep(0.1)
                     continue
                 # 逻辑处理-出现菜单<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -1009,6 +1012,9 @@ def main_script():
                         if buy_bell_ticket:
                             time.sleep(1)
                             buy_bell_from_mystery_shop(img0, x, y)
+                        if buy_shanshanming:
+                            time.sleep(1)
+                            buy_shanshanming_from_mystery_shop(img0, x, y)
 
                         pause_event.wait()
                         kbu.do_press(Key.esc)
