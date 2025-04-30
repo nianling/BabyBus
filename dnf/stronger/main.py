@@ -1060,8 +1060,6 @@ def main_script():
                                 logger.error("先向上走两步")
                                 mover.move(target_direction="UP")
                                 time.sleep(0.5)
-                            # stuck_room_idx = None
-                            # room_idx_list.clear()
                         continue
 
                     # 已经确定目标门,移动到目标位置
