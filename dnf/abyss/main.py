@@ -78,9 +78,9 @@ last_role_no = 1
 # 买罐子
 buy_tank_type = 2  # buy_type: 0不买，1买传说，2买史诗，3买史诗+传说
 # 买铃铛
-buy_bell_ticket = False
+buy_bell_ticket = 2  # buy_type: 0，不买，1买粉罐子，2买传说罐子，3买粉+传说罐子
 # 买闪闪明
-buy_shanshanming = False
+buy_shanshanming = 2  # buy_type: 0，不买，1买粉罐子，2买传说罐子，3买粉+传说罐子
 
 weights = os.path.join(config_.project_base_path, 'weights/abyss.04032147.best.pt')  # 模型存放的位置
 # <<<<<<<<<<<<<<<< 运行时相关的参数 <<<<<<<<<<<<<<<<
@@ -404,6 +404,18 @@ def analyse_det_result(results, hero_height, img) -> DetResult:
                 cv2.circle(img, (int(a[0]), int(a[1] - boss_h)), 1, color_red, 2)
 
         return res
+
+
+def process_mystery_shop(img):
+    buy_from_mystery_shop(img, x, y)
+    time.sleep(1)
+    buy_tank_from_mystery_shop(img, x, y, buy_tank_type)
+    if buy_bell_ticket:
+        time.sleep(1)
+        buy_bell_from_mystery_shop(img, x, y, buy_bell_ticket)
+    if buy_shanshanming:
+        time.sleep(1)
+        buy_shanshanming_from_mystery_shop(img, x, y, buy_shanshanming)
 
 
 # <<<<<<<<<<<<<<<< 方法定义 <<<<<<<<<<<<<<<<
@@ -1006,15 +1018,8 @@ def main_script():
                     pause_event.wait()
                     # 神秘商店
                     if shop_mystery_exist:
-                        buy_from_mystery_shop(img0, x, y)
-                        time.sleep(1)
-                        buy_tank_from_mystery_shop(img0, x, y, buy_tank_type)
-                        if buy_bell_ticket:
-                            time.sleep(1)
-                            buy_bell_from_mystery_shop(img0, x, y)
-                        if buy_shanshanming:
-                            time.sleep(1)
-                            buy_shanshanming_from_mystery_shop(img0, x, y)
+                        process_mystery_shop(img0)
+                        process_mystery_shop(capturer.capture())  # 再尝试一次，防止前面截的帧有干扰不清晰
 
                         pause_event.wait()
                         kbu.do_press(Key.esc)
