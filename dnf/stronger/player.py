@@ -737,9 +737,10 @@ def buy_tank_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
         logger.debug("购买罐子一次")
 
 
-def buy_bell_from_mystery_shop(full_screen, x, y):
+def buy_bell_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
     """
     神秘商店购买
+    buy_type: 0，不买，1买粉罐子，2买传说罐子，3买粉+传说罐子
     """
     logger.debug('出现神秘商店！')
     gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
@@ -751,6 +752,22 @@ def buy_bell_from_mystery_shop(full_screen, x, y):
     for top_left, bottom_right, _ in matches:
         x1, y1 = top_left
         x2, y2 = bottom_right
+        tank_crop = full_screen[y1:y2, x1:x2]
+        avg_b, avg_g, avg_r = cv2.mean(tank_crop)[:3]
+        weighted_average = 0.299 * avg_r + 0.587 * avg_g + 0.114 * avg_b
+        logger.debug(f"buy_type：{buy_type}， {weighted_average}")
+        # buy_type: 0，不买，1买粉罐子，2买传说罐子，3买粉+传说罐子
+        if buy_type == 0:
+            logger.debug(f"不买")
+            return
+        if buy_type == 1 and weighted_average > 100:
+            logger.debug(f"不买")
+            return
+        if buy_type == 2 and weighted_average < 100:
+            logger.debug(f"不买")
+            return
+        if buy_type == 3:
+            ...
         center_x = int((x1 + x2) / 2)
         center_y = int((y1 + y2) / 2)
         mu.do_move_to(x + center_x, y + center_y)
@@ -762,15 +779,37 @@ def buy_bell_from_mystery_shop(full_screen, x, y):
         logger.debug("购买铃铛一次")
 
 
-def buy_shanshanming_from_mystery_shop(full_screen, x, y):
+def buy_shanshanming_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
     """
     神秘商店购买
+    buy_type: 0，不买，1买粉罐子，2买传说罐子，3买粉+传说罐子
     """
     logger.debug('出现神秘商店！')
     gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
-    template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/shanshanming26.png'), cv2.IMREAD_COLOR)
-    template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
-    matches = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
+    matches = []
+    # buy_type: 0，不买，1买粉罐子，2买传说罐子，3买粉+传说罐子
+    if buy_type == 0:
+        logger.debug(f"不买")
+        return
+    if buy_type == 1:
+        logger.debug(f"买小的")
+        template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/shanshanming26.png'), cv2.IMREAD_COLOR)
+        template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
+        matches = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
+    if buy_type == 2:
+        logger.debug("买大的")
+        template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/shanshanming26-2.png'), cv2.IMREAD_COLOR)
+        template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
+        matches = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
+    if buy_type == 3:
+        logger.debug("买小的+大的")
+        template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/shanshanming26.png'), cv2.IMREAD_COLOR)
+        template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
+        matches1 = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
+        template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/shanshanming26-2.png'), cv2.IMREAD_COLOR)
+        template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
+        matches2 = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
+        matches = matches1 + matches2
     logger.debug(f"发现闪闪明{len(matches)}个。{matches}")
 
     for top_left, bottom_right, _ in matches:
