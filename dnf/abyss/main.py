@@ -408,13 +408,13 @@ def analyse_det_result(results, hero_height, img) -> DetResult:
 
 def process_mystery_shop(img):
     buy_from_mystery_shop(img, x, y)
-    time.sleep(1)
+    time.sleep(0.5)
     buy_tank_from_mystery_shop(img, x, y, buy_tank_type)
     if buy_bell_ticket:
-        time.sleep(1)
+        time.sleep(0.5)
         buy_bell_from_mystery_shop(img, x, y, buy_bell_ticket)
     if buy_shanshanming:
-        time.sleep(1)
+        time.sleep(0.5)
         buy_shanshanming_from_mystery_shop(img, x, y, buy_shanshanming)
 
 
@@ -436,7 +436,7 @@ def main_script():
     # 获取角色配置列表
     role_list = get_role_config_list()
     logger.info("读取角色配置列表...")
-    logger.debug(f"共有{len(role_list)}个角色...")
+    logger.info(f"共有{len(role_list)}个角色...")
 
     pause_event.wait()  # 暂停
     # 遍历角色, 循环刷图
@@ -446,7 +446,7 @@ def main_script():
         role = role_list[i]
         # 判断,从指定的角色开始,其余的跳过
         if first_role_no != -1 and (i + 1) < first_role_no:
-            logger.debug(f'[跳过]-【{i + 1}】[{role.name}]...')
+            logger.info(f'[跳过]-【{i + 1}】[{role.name}]...')
             continue
         logger.warning(f'第【{i + 1}】个角色，【{role.name}】 开始了')
         oen_role_start_time = datetime.now()
@@ -460,10 +460,10 @@ def main_script():
         # 确保展示右下角的图标
         show_right_bottom_icon(capturer.capture(), x, y)
 
-        logger.debug(f'设置的拥有疲劳值: {role.fatigue_all}')
+        logger.info(f'设置的拥有疲劳值: {role.fatigue_all}')
 
         ocr_fatigue = do_ocr_fatigue_retry(handle, x, y, reader, 5)
-        logger.debug(f'识别的拥有疲劳值: {ocr_fatigue}')
+        logger.info(f'识别的拥有疲劳值: {ocr_fatigue}')
         if ocr_fatigue is not None:
             if role.fatigue_all != ocr_fatigue:
                 logger.warning(f'更新疲劳值--->(计算): {role.fatigue_all},(识别): {ocr_fatigue}')
@@ -473,7 +473,7 @@ def main_script():
         current_fatigue = role.fatigue_all
         fatigue_cost = 8  # 一把消耗的疲劳值
 
-        logger.debug(f'{role.name},拥有疲劳值:{role.fatigue_all},预留疲劳值:{role.fatigue_reserved}')
+        logger.info(f'{role.name},拥有疲劳值:{role.fatigue_all},预留疲劳值:{role.fatigue_reserved}')
 
         # 如果需要刷图,这选择副本,进入副本
         need_fight = current_fatigue - fatigue_cost >= role.fatigue_reserved if role.fatigue_reserved > 0 else current_fatigue > 0
@@ -482,27 +482,27 @@ def main_script():
             pause_event.wait()  # 暂停
             # 奶爸刷图,切换输出加点
             if '奶爸' in role.name:
-                logger.debug("是奶爸,准备切换锤子护石...")
+                logger.info("是奶爸,准备切换锤子护石...")
                 crusader_to_battle(x, y)
 
             pause_event.wait()  # 暂停
             # 默认是站在赛丽亚房间
 
             # N 点第一个
-            logger.debug("传送到风暴门口,选地图...")
+            logger.info("传送到风暴门口,选地图...")
             # 传送到风暴门口
             from_sailiya_to_abyss(x, y)
-            logger.debug("先向上移，保持顶到最上位置。。")
-            kbu.do_press_with_time(Key.up, 1500, 50)
-            # 让角色走到最左面，进图选择页面
-            logger.debug("再向左走，进入选择地图页面。。")
-            kbu.do_press_with_time(Key.left, 2500, 300)
+            logger.info("先向上移，保持顶到最上位置。。")
+            kbu.do_press_with_time(Key.up, 800, 50)
+            # # 让角色走到最左面，进图选择页面
+            # logger.info("再向左走，进入选择地图页面。。")
+            # kbu.do_press_with_time(Key.left, 2500, 300)
 
             # 先向右移动一点，以防一传过来的就离得很近
-            logger.debug("向右移一点，以防一传过来的就离得很近。。")
-            kbu.do_press_with_time(Key.right, 1500, 50)
-            logger.debug("向左走向左走，进入选择地图页面。。")
-            kbu.do_press_with_time(Key.left, 2000, 300)
+            logger.info("向右移一点，以防一传过来的就离得很近。。")
+            kbu.do_press_with_time(Key.right, 1000, 50)
+            logger.info("向左走向左走，进入选择地图页面。。")
+            kbu.do_press_with_time(Key.left, 2500, 50)
             time.sleep(0.5)
             time.sleep(1.5)  # 先等自己移动到深渊图
 
@@ -542,7 +542,7 @@ def main_script():
 
             # 进不去
             if not enter_map_success:
-                logger.debug(f'【{role.name}】，进不去地图,结束当前角色')
+                logger.warning(f'【{role.name}】，进不去地图,结束当前角色')
                 time.sleep(0.2)
                 # esc 关闭地图选择界面
                 kbu.do_press(Key.esc)
@@ -552,11 +552,11 @@ def main_script():
             pause_event.wait()  # 暂停
 
             fight_count += 1
-            logger.debug(f'{role.name} 刷图,第 {fight_count} 次，开始...')
+            logger.info(f'{role.name} 刷图,第 {fight_count} 次，开始...')
 
             # 记录疲劳值
             current_fatigue_ocr = do_ocr_fatigue_retry(handle, x, y, reader, 5)  # 识别疲劳值
-            logger.debug(f'当前还有疲劳值(识别): {current_fatigue_ocr}')
+            logger.info(f'当前还有疲劳值(识别): {current_fatigue_ocr}')
 
             global continue_pressed
             if continue_pressed:
@@ -566,15 +566,15 @@ def main_script():
 
             if not buff_finished:
                 # 上Buff
-                logger.debug(f'准备上Buff..')
+                logger.info(f'准备上Buff..')
                 if role.buff_effective:
                     for buff in role.buffs:
                         kbu.do_buff(buff)
                 else:
-                    logger.debug(f'不需要上Buff..')
+                    logger.info(f'不需要上Buff..')
                 buff_finished = True
 
-            logger.debug(f'准备打怪..')
+            logger.info(f'准备打怪..')
 
             # todo 循环打怪过图 循环开始////////////////////////////////
 
@@ -605,7 +605,7 @@ def main_script():
                 )
 
                 if results is None or len(results) == 0 or len(results[0].boxes) == 0:
-                    # logger.debug('模型没有识别到物体')
+                    # logger.info('模型没有识别到物体')
                     continue
 
                 # # todo
@@ -641,15 +641,17 @@ def main_script():
                 hole_xywh_list = det.hole_xywh_list
 
                 if continue_exist or shop_exist or shop_mystery_exist:
-                    logger.warning(f"出现商店{shop_exist}，再次挑战了{continue_exist}")
+                    logger.debug(f"出现商店{shop_exist}，再次挑战了{continue_exist}")
                     fight_victory = True
 
                 if ball_xywh_list:
-                    logger.warning(f"出现球了")
+                    logger.debug(f"出现球了")
                     ball_appeared = True
                 if hole_xywh_list:
-                    logger.warning(f"出现大坑了")
+                    logger.info(f"出现大坑了")
                     hole_appeared = True
+                if boss_xywh_list:
+                    logger.info(f"出现boss了")
 
                 if hero_xywh:
                     pass
@@ -855,7 +857,11 @@ def main_script():
                             # 推荐技能
                             skill_name = skill_util.suggest_skill(role, img0)
                         skill_util.cast_skill(skill_name)
-                        time.sleep(0.9)
+                        # 小等一下 比如等怪死
+                        if skill_name == 'x':
+                            ...
+                        else:
+                            time.sleep(0.1)
                         continue
 
                     pause_event.wait()  # 暂停
@@ -913,7 +919,7 @@ def main_script():
                 # 逻辑处理-出现菜单>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                 if menu_exist:
                     kbu.do_press(Key.esc)
-                    logger.debug("关闭菜单")
+                    logger.info("关闭菜单")
                     time.sleep(0.1)
                     continue
                 # 逻辑处理-出现菜单<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -938,7 +944,9 @@ def main_script():
 
                         continue
                     elif collect_loot_pressed and time.time() - collect_loot_pressed_time < 7:
-                        logger.warning(f"已经预先按下移动物品了，10s内忽略拾取...{int(10 - (time.time() - collect_loot_pressed_time))}")
+                        tt = time.time()
+                        if 0.1 < tt - int(tt) < 0.2:  # 0.6 < tt - int(tt) < 0.75:
+                            logger.info(f"已经预先按下移动物品了，10s内忽略拾取...{int(7 - (time.time() - collect_loot_pressed_time))}")
                         continue
                     elif collect_loot_pressed and time.time() - collect_loot_pressed_time >= 7:
                         logger.warning(f"已经预先按下移动物品了，10已经过去了...")
@@ -948,7 +956,7 @@ def main_script():
                             mover._release_all_keys()
                             time.sleep(0.1)
                             kbu.do_press("x")
-                            logger.debug("捡东西按完x了")
+                            logger.info("捡东西按完x了")
                             continue
 
                     # 掉落物不在范围内,需要移动
@@ -1018,8 +1026,8 @@ def main_script():
                     pause_event.wait()
                     # 神秘商店
                     if shop_mystery_exist:
-                        process_mystery_shop(img0)
-                        process_mystery_shop(capturer.capture())  # 再尝试一次，防止前面截的帧有干扰不清晰
+                        time.sleep(0.5)
+                        process_mystery_shop(capturer.capture())  # 重新截图，防止前面截的帧有干扰不清晰
 
                         pause_event.wait()
                         kbu.do_press(Key.esc)
@@ -1102,8 +1110,8 @@ def main_script():
             current_fatigue = do_ocr_fatigue_retry(handle, x, y, reader, 5)
             if role.fatigue_reserved > 0 and (current_fatigue - fatigue_cost) < role.fatigue_reserved:
                 # 再打一把就疲劳值就不够预留的了
-                logger.debug(f'再打一把就疲劳值就不够预留的{role.fatigue_reserved}了')
-                logger.debug(f'刷完{fight_count}次了，结束...')
+                logger.info(f'再打一把就疲劳值就不够预留的{role.fatigue_reserved}了')
+                logger.info(f'刷完{fight_count}次了，结束...')
                 # 返回城镇
                 kbu.do_press(dnf.key_return_to_town)
                 time.sleep(2)
@@ -1112,8 +1120,8 @@ def main_script():
 
             if current_fatigue <= 0:
                 # 再打一把就疲劳值就不够预留的了
-                logger.debug(f'没有疲劳值了')
-                logger.debug(f'刷完{fight_count}次了，结束...')
+                logger.info(f'没有疲劳值了')
+                logger.info(f'刷完{fight_count}次了，结束...')
                 # 返回城镇
                 kbu.do_press(dnf.key_return_to_town)
                 time.sleep(2)
@@ -1123,11 +1131,11 @@ def main_script():
             pause_event.wait()  # 暂停
             # 识别"再次挑战"按钮是否存在,是否可以点击
             btn_exist, text_exist, btn_clickable = detect_try_again_button(capturer.capture())
-            logger.error(f"识别再次挑战，{btn_exist}，{text_exist}，{btn_clickable}")
+            logger.debug(f"识别再次挑战，{btn_exist}，{text_exist}，{btn_clickable}")
             # 没的刷了,不能再次挑战了
             if btn_exist and not btn_clickable:
                 pause_event.wait()  # 暂停
-                logger.debug(f'刷了{fight_count}次了,再次挑战禁用状态,不能再次挑战了...')
+                logger.info(f'刷了{fight_count}次了,再次挑战禁用状态,不能再次挑战了...')
                 # 返回城镇
                 kbu.do_press(dnf.key_return_to_town)
                 time.sleep(2)
@@ -1151,7 +1159,7 @@ def main_script():
         # todo 循环进图结束<<<<<<<<<<<<<<<<<<<<<<<
 
         time_diff = datetime.now() - oen_role_start_time
-        logger.warning(f'第【{i + 1}】个角色【{role.name}】刷图打怪循环结束...总计耗时: {time_diff.total_seconds() / 60} 分钟')
+        logger.warning(f'第【{i + 1}】个角色【{role.name}】刷图打怪循环结束...总计耗时: {(time_diff.total_seconds() / 60):.1f} 分钟')
 
         # 刷图流程结束<<<<<<<<<<
         # 展示掉右下角的图标
@@ -1205,7 +1213,7 @@ def main_script():
 
 
 # 等待按键,启动
-logger.debug(".....python主线程 启动..........")
+logger.info(".....python主线程 启动..........")
 logger.warning(f".....请按下 {dnf.key_start_script} 组合键开始脚本...")
 kboard.wait(dnf.key_start_script)  # 等待按下组合键
 winsound.PlaySound(config_.sound1, winsound.SND_FILENAME)
@@ -1217,8 +1225,8 @@ script_task_thread = threading.Thread(target=main_script)
 script_task_thread.daemon = True
 script_task_thread.start()
 start_time = datetime.now()
-logger.debug('')
-logger.debug(f'脚本开始: {start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+logger.info('')
+logger.info(f'脚本开始: {start_time.strftime("%Y-%m-%d %H:%M:%S")}')
 
 # 创建并启动监听中断按键线程
 listener_thread = threading.Thread(target=start_keyboard_listener)
@@ -1234,20 +1242,20 @@ while script_task_thread.is_alive():
     time.sleep(1)
 
 end_time = datetime.now()
-logger.debug(f'脚本开始: {start_time.strftime("%Y-%m-%d %H:%M:%S")}')
-logger.debug(f'脚本结束: {end_time.strftime("%Y-%m-%d %H:%M:%S")}')
+logger.info(f'脚本开始: {start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+logger.info(f'脚本结束: {end_time.strftime("%Y-%m-%d %H:%M:%S")}')
 time_delta = end_time - start_time
-logger.debug(f'总计耗时: {time_delta.total_seconds() / 60} 分钟')
+logger.info(f'总计耗时: {(time_delta.total_seconds() / 60):.1f} 分钟')
 
 # 脚本正常执行完,不是被组合键中断的,并且配置了退出游戏
 if not stop_be_pressed and quit_game_after_finish:
-    logger.debug("正在退出游戏...")
+    logger.info("正在退出游戏...")
     clik_to_quit_game(handle, x, y)
     time.sleep(5)
 
-logger.debug("python主线程已停止.....")
+logger.info("python主线程已停止.....")
 
 if not stop_be_pressed and quit_game_after_finish and shutdown_pc_after_finish:
-    logger.debug("一分钟之后关机...")
+    logger.info("一分钟之后关机...")
     # os.system("shutdown /r /t 60")  # 60后秒重启
     os.system("shutdown /s /t 60")  # 60后秒关机

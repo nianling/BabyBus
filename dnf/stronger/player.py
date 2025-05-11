@@ -32,7 +32,7 @@ def sale_equipment_to_sailiya(x, y):
     """
     一键出售装备,给赛丽亚
     """
-    logger.debug('一键出售装备,给赛丽亚')
+    logger.info('一键出售装备,给赛丽亚')
     # 点击赛丽亚
     mu.do_smooth_move_to(x + 556, y + 189)
     time.sleep(0.2)
@@ -75,7 +75,7 @@ def transfer_materials_to_account_vault(x, y):
     """
     转移材料到账号金库
     """
-    logger.debug('转移材料到账号金库')
+    logger.info('转移材料到账号金库')
     # 点击仓库
     mu.do_smooth_move_to(x + 366, y + 353)
     time.sleep(0.1)
@@ -104,7 +104,7 @@ def transfer_gold_to_account_vault(x, y):
     """
     转移金币到账号金库
     """
-    logger.debug('转移金币到账号金库')
+    logger.info('转移金币到账号金库')
     # 点击仓库
     mu.do_smooth_move_to(x + 366, y + 353)
     time.sleep(0.1)
@@ -134,7 +134,7 @@ def finish_daily_challenge(x, y, daily1and1=False):
     点击每日任务
     """
     # 点击畅玩任务(1446,1108)，从下往上依次点击一遍（需要移动鼠标）(1006,838) 1007,711  1004,599 1006,494
-    logger.debug('点击畅玩任务,完成每日任务')
+    logger.info('点击畅玩任务,完成每日任务')
     mu.do_smooth_move_to(x + 767, y + 542)  # 不等比
     time.sleep(0.1)
     mu.do_click(Button.left)
@@ -174,7 +174,7 @@ def teleport_to_sailiya(x, y):
     刷了图的情况下(图标位置不一样,刷图第三个,不刷图第四个),鼠标移动到瞬移赛丽亚旅馆
     都一样了 都是第四个
     """
-    logger.debug('瞬移赛丽亚旅馆')
+    logger.info('瞬移赛丽亚旅馆')
     # 鼠标移动到瞬移赛丽亚旅馆
     mu.do_smooth_move_to(x + 818, y + 543)
     time.sleep(0.2)
@@ -189,7 +189,7 @@ def clik_to_quit_game(handle, x, y):
     """
     结束游戏
     """
-    logger.debug('结束游戏')
+    logger.info('结束游戏')
     time.sleep(0.5)
 
     kbu.do_press(Key.esc)
@@ -291,7 +291,7 @@ def do_ocr_fatigue(handle, x, y, model):
             reader = easyocr.Reader(['en'])
 
     result = reader.readtext(sharpened, allowlist="0123456789/", detail=0)
-    logger.info('识别文本:{}', result)
+    logger.debug('识别文本:{}', result)
 
     mu.do_smooth_move_to(x + 1027, y + 561)
 
@@ -375,7 +375,7 @@ def crusader_to_battle(x, y):
     """
     奶爸,切换输出护石
     """
-    logger.warning("奶爸,准备切换锤子护石...")
+    logger.info("奶爸,准备切换锤子护石...")
     time.sleep(2)
     # 奶爸切换锤子护石
     # 打开物品栏
@@ -408,7 +408,7 @@ def crusader_to_battle(x, y):
     # esc 关闭装备栏
     kbu.do_press(Key.esc)
     time.sleep(0.2)
-    logger.warning("奶爸,切换锤子护石完毕...")
+    logger.info("奶爸,切换锤子护石完毕...")
 
 
 def goto_white_map(x, y):
@@ -579,7 +579,7 @@ def goto_daily_1and1(x, y):
     :param y:
     :return:
     """
-    logger.debug('点击畅玩任务')
+    logger.info('点击畅玩任务')
     mu.do_smooth_move_to(x + 767, y + 542)  # 不等比
     time.sleep(0.2)
     mu.do_click(Button.left)
@@ -674,12 +674,12 @@ def buy_from_mystery_shop(full_screen, x, y):
     """
     神秘商店购买
     """
-    logger.debug('出现神秘商店！')
+    logger.info('出现神秘商店！')
     gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
     template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/ticket.png'), cv2.IMREAD_COLOR)
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
     matches = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
-    logger.debug(f"发现门票{len(matches)}个。{matches}")
+    logger.info(f"发现门票{len(matches)}个。{matches}")
 
     for top_left, bottom_right, _ in matches:
         x1, y1 = top_left
@@ -692,7 +692,7 @@ def buy_from_mystery_shop(full_screen, x, y):
         time.sleep(0.2)
         mu.do_click(Button.left)
         time.sleep(0.2)
-        logger.debug("购买门票一次")
+        logger.info("购买门票一次")
 
 
 def buy_tank_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
@@ -700,12 +700,12 @@ def buy_tank_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
     神秘商店购买
     buy_type: 0，不买，1买传说，2买史诗，3买史诗+传说
     """
-    logger.debug('出现神秘商店！')
+    logger.info('出现神秘商店！')
     gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
     template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/tank_legend.png'), cv2.IMREAD_COLOR)
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
     matches = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
-    logger.debug(f"发现罐子{len(matches)}个。{matches}")
+    logger.info(f"发现罐子{len(matches)}个。{matches}")
 
     for top_left, bottom_right, _ in matches:
         x1, y1 = top_left
@@ -713,7 +713,7 @@ def buy_tank_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
         tank_crop = full_screen[y1:y2, x1:x2]
         avg_b, avg_g, avg_r = cv2.mean(tank_crop)[:3]
         weighted_average = 0.299 * avg_r + 0.587 * avg_g + 0.114 * avg_b
-        logger.debug(f"buy_type：{buy_type}， {weighted_average}")
+        logger.info(f"buy_type：{buy_type}， {weighted_average}")
         # buy_type: 0，不买，1买传说，2买史诗，3买史诗+传说
         if buy_type == 0:
             logger.debug(f"不买")
@@ -734,7 +734,7 @@ def buy_tank_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
         time.sleep(0.2)
         mu.do_click(Button.left)
         time.sleep(0.2)
-        logger.debug("购买罐子一次")
+        logger.info("购买罐子一次")
 
 
 def buy_bell_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
@@ -742,12 +742,12 @@ def buy_bell_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
     神秘商店购买
     buy_type: 0，不买，1买粉罐子，2买传说罐子，3买粉+传说罐子
     """
-    logger.debug('出现神秘商店！')
+    logger.info('出现神秘商店！')
     gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
     template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/bell26.png'), cv2.IMREAD_COLOR)
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
     matches = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
-    logger.debug(f"发现铃铛{len(matches)}个。{matches}")
+    logger.info(f"发现铃铛{len(matches)}个。{matches}")
 
     for top_left, bottom_right, _ in matches:
         x1, y1 = top_left
@@ -755,7 +755,7 @@ def buy_bell_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
         tank_crop = full_screen[y1:y2, x1:x2]
         avg_b, avg_g, avg_r = cv2.mean(tank_crop)[:3]
         weighted_average = 0.299 * avg_r + 0.587 * avg_g + 0.114 * avg_b
-        logger.debug(f"buy_type：{buy_type}， {weighted_average}")
+        logger.info(f"buy_type：{buy_type}， {weighted_average}")
         # buy_type: 0，不买，1买粉罐子，2买传说罐子，3买粉+传说罐子
         if buy_type == 0:
             logger.debug(f"不买")
@@ -776,7 +776,7 @@ def buy_bell_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
         time.sleep(0.2)
         mu.do_click(Button.left)
         time.sleep(0.2)
-        logger.debug("购买铃铛一次")
+        logger.info("购买铃铛一次")
 
 
 def buy_shanshanming_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
@@ -784,7 +784,7 @@ def buy_shanshanming_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
     神秘商店购买
     buy_type: 0，不买，1买粉罐子，2买传说罐子，3买粉+传说罐子
     """
-    logger.debug('出现神秘商店！')
+    logger.info('出现神秘商店！')
     gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
     matches = []
     # buy_type: 0，不买，1买粉罐子，2买传说罐子，3买粉+传说罐子
@@ -810,7 +810,7 @@ def buy_shanshanming_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
         template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
         matches2 = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
         matches = matches1 + matches2
-    logger.debug(f"发现闪闪明{len(matches)}个。{matches}")
+    logger.info(f"发现闪闪明{len(matches)}个。{matches}")
 
     for top_left, bottom_right, _ in matches:
         x1, y1 = top_left
@@ -823,4 +823,4 @@ def buy_shanshanming_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
         time.sleep(0.2)
         mu.do_click(Button.left)
         time.sleep(0.2)
-        logger.debug("购买闪闪明一次")
+        logger.info("购买闪闪明一次")

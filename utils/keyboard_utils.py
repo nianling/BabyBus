@@ -80,7 +80,7 @@ def do_command_wait_time(key_arr, wait_time: float):
     :return:
     """
     for key in key_arr:
-        if key == ' ':
+        if key == ' ' or key == '':
             time.sleep(0.1)
             continue
         do_press(key)

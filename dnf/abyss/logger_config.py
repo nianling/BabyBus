@@ -27,4 +27,4 @@ def switch_level(level):
     console_log_id = logger.add(sys.stderr, enqueue=True)
 
 
-switch_level("DEBUG")
+switch_level("INFO")
