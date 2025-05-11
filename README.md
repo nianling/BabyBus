@@ -37,6 +37,8 @@ pip install opencv-python
 ```
 # BabyBus
 
+[This project](https://github.com/nianling/BabyBus) was created and is maintained by [廿陵](mailto:wemean66@gmail.com,nianlingbeige@163.com)(https://github.com/nianling).
+
 This is an open-source project that allows you to download, use, and modify the code, subject to the following rules:
 
 - **Attribution Requirement**: Any derivative works based on this project must retain the original author's copyright notice.
@@ -50,6 +52,7 @@ This project adheres to the terms of the **GNU Affero General Public License (AG
 
 For inquiries about commercial licensing, please contact:  
 **Author**: [廿陵]  
-**Email**: [wemean66@gmail.com]  
+**Email**: <wemean66@gmail.com>, <nianlingbeige@163.com>  
+**GitHub**: <https://github.com/nianling>
 
 Full license text is available in the [LICENSE](LICENSE) file.

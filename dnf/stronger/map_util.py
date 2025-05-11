@@ -271,26 +271,6 @@ def get_boss_room_cropped(crop, rows, cols):
     return reddest_cell
 
 
-def 根据蓝标找当前房间位置(img):
-    # 裁剪出来小地图区域
-    crop, rows, cols = get_small_map_region(img)
-    # cv.imshow("map", crop)
-    # cv.waitKey(0)
-    (row, col) = current_room_index_cropped(crop, rows, cols)
-    return row, col
-
-
-def 找BOOS房间(img):
-    # 裁剪出来小地图区域
-    crop, rows, cols = get_small_map_region(img)
-
-    # 从识别到的的小地图区域中找boss房间
-    room = get_boss_room_cropped(crop, rows, cols)
-
-    logger.debug(f"BOOS房间在 {room}")
-    return room
-
-
 def get_boss_from_crop(crop, rows, cols):
     """
 

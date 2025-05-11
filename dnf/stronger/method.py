@@ -214,7 +214,7 @@ def exist_near(target_xywh, xywh_list, threshold=100):
 
         # 如果距离小于等于阈值，就返回 True
         if distance <= threshold:
-            return True
+            return door
 
     return False
 

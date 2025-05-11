@@ -146,6 +146,10 @@ class MovementController:
             move_mode (str): 移动模式 "walking" 或 "running"
         """
         with self._lock:
+            if not target_direction:
+                print("______ERROR:target_direction is null！！________")
+                return
+
             # 如果方向和模式都没变，无需操作
             if target_direction == self.current_direction and move_mode == self.current_mode:
                 return

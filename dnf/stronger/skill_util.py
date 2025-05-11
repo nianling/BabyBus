@@ -151,9 +151,10 @@ def suggest_skill(role: RoleConfig, img0):
     skill_name = 'x'
 
     for s in role.custom_priority_skills:
+        # logger.debug(f"CD判断:【{s}】")
         if isinstance(s, str) or isinstance(s, Key):
             if skill_ready_warm_colors(s, img0):
-                logger.debug(f"字符串技能:{s} 已恢复cd(识别)")
+                logger.debug(f"字符串技能:【{s}】 已恢复cd(识别)")
                 return s
         elif isinstance(s, list):
             return s
@@ -161,20 +162,24 @@ def suggest_skill(role: RoleConfig, img0):
             if s.cd:
                 t = time.time()
                 if t - s.cd > s.recent_use_time + 0.1:
-                    logger.debug(f"Skill:{s.name} 已恢复cd(计算)")
-                    s.recent_use_time = t  # 更新最近使用时间
+                    logger.debug(f"Skill:【{s.name}】 已恢复cd(计算)")
+                    # s.recent_use_time = t  # 更新最近使用时间
                     return s
+                else:
+                    logger.debug(f'{s}未恢复计算cd,再找')
             elif len(s.command) == 1 or s.hot_key is not None:
                 sname = s.hot_key if s.hot_key is not None else s.command[0]
                 if skill_ready_warm_colors(sname, img0):
-                    logger.debug(f"Skill:{s.name} 已恢复cd(识别)")
+                    logger.debug(f"Skill:【{s.name}】 已恢复cd(识别)")
                     return s
+                else:
+                    logger.debug(f'{s}未恢复识别cd,再找')
             logger.debug('未恢复cd,再找')
 
     logger.debug("自定义技能 没有合适的!!!")
     for _ in range(10):
         skill_name = role.candidate_hotkeys[int(np.random.randint(len(role.candidate_hotkeys), size=1)[0])]
-        logger.debug('随机技能名字', skill_name)
+        logger.debug(f'随机技能名字 【{skill_name}】')
         if skill_ready_warm_colors(skill_name, img0):
             break
         else:
@@ -187,7 +192,7 @@ def suggest_skill_powerful(role: RoleConfig, img0):
     for s in role.powerful_skills:
         if isinstance(s, str) or isinstance(s, Key):
             if skill_ready_warm_colors(s, img0):
-                logger.debug(f"字符串技能:{s} 已恢复cd(识别)")
+                logger.debug(f"字符串技能:【{s}】 已恢复cd(识别)")
                 return s
         elif isinstance(s, list):
             return s
@@ -195,13 +200,13 @@ def suggest_skill_powerful(role: RoleConfig, img0):
             if s.cd:
                 t = time.time()
                 if t - s.cd > s.recent_use_time + 0.1:
-                    logger.debug(f"Skill:{s.name} 已恢复cd(计算)")
-                    s.recent_use_time = t  # 更新最近使用时间
+                    logger.debug(f"Skill:【{s.name}】 已恢复cd(计算)")
+                    # s.recent_use_time = t  # 更新最近使用时间
                     return s
             elif len(s.command) == 1 or s.hot_key is not None:
                 sname = s.hot_key if s.hot_key is not None else s.command[0]
                 if skill_ready_warm_colors(sname, img0):
-                    logger.debug(f"Skill:{s.name} 已恢复cd(识别)")
+                    logger.debug(f"Skill:【{s.name}】 已恢复cd(识别)")
                     return s
             logger.debug('未恢复cd,再找')
     return None
@@ -213,11 +218,16 @@ def cast_skill(s):
     :param s:
     :return:
     """
+    logger.debug(f"放技能:{s}")
+
+    # 按键指令操作
     if isinstance(s, str) or isinstance(s, Key):
         kbu.do_press(s)
     elif isinstance(s, list):
         kbu.do_command_wait_time(s, 0)
     elif isinstance(s, Skill):
+        if s.cd:
+            s.recent_use_time = time.time()  # 更新最近使用时间
         if s.hot_key:
             kbu.do_press(s.hot_key)
         elif s.command:
@@ -225,6 +235,15 @@ def cast_skill(s):
                 kbu.do_concurrent_command_wait_time(s.command, 0)
             else:
                 kbu.do_command_wait_time(s.command, 0)
+
+    # 技能动作时间
+    if isinstance(s, Skill) and s.animation_time is not None and s.animation_time > 0:
+        logger.debug(f"技能等待时间:{s.animation_time}")
+        time.sleep(s.animation_time)
+    elif s == 'x':
+        time.sleep(0.1)
+    else:
+        time.sleep(0.6)
 
 if __name__ == '__main__':
     img = cv.imread("./ff8.png")

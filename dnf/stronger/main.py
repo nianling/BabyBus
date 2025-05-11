@@ -184,7 +184,7 @@ def display_results():
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         except Exception as e:
-            print(f"展示显示报错: {e}")
+            logger.error(f"展示显示报错: {e}")
 
     # 清理资源
     cv2.destroyAllWindows()
@@ -391,6 +391,69 @@ def analyse_det_result(results, hero_height, img):
         return res
 
 
+def judge_is_target_door(current_room, door_box, hero_box, next_room_direction, allow_directions, path_stack, d, img0):
+    """
+    判断是否是目标门
+    :param current_room:
+    :param door_box:
+    :param next_room_direction:
+    :param allow_directions:
+    :param path_stack:
+    :param d:
+    :param img0:
+    :return:
+    """
+    if door_box is None:
+        logger.debug("判断是否是目标门，空的，否")
+        return False
+    if len(allow_directions) == len(d.door_xywh_list + d.door_boss_xywh_list):
+        # 一屏全部出现了，肯定是目标门
+        logger.debug("判断是否是目标门，全部出现，是")
+        return True
+    else:
+
+        previous = None
+        if current_room in [item[0] for item in path_stack]:
+            for ii in range(len(path_stack) - 1, 0, -1):
+                if path_stack[ii][0] == current_room:
+                    previous = path_stack[ii - 1][1]
+                    break
+
+        # last_room = get_last_room_info(current_room, path_history)
+        # previous = None if not last_room else last_room.direction
+
+        if len(allow_directions) == 2 and previous == 'RIGHT' and door_box[0] > img0.shape[1] * 3 // 4 and door_box[0] - hero_box[0] > 170:
+            logger.debug("判断是否是目标门，2门入口门在左，可能处于右，是")
+            return True
+        if len(allow_directions) == 2 and previous == 'LEFT' and door_box[0] < img0.shape[1] // 4 and hero_box[0] - door_box[0] > 170:
+            logger.debug("判断是否是目标门，2门入口门在右，可能处于左，是")
+            return True
+
+        if next_room_direction == 'RIGHT' and door_box[0] > img0.shape[1] * 3 // 4:
+            logger.debug("判断是否是目标门，目标右，处于右，是")
+            return True
+        elif next_room_direction == 'LEFT' and door_box[0] < img0.shape[1] // 5:
+            logger.debug("判断是否是目标门，目标左，处于左，是")
+            return True
+        else:
+            # if previous == "RIGHT" and door_box[0] < img0.shape[1] // 6:
+            if previous == "RIGHT" and door_box[0] < img0.shape[1] * 7 // 50:
+                logger.debug("判断是否是目标门，太靠左了贴着入口，否")
+                return False
+            elif previous == "LEFT" and door_box[0] > img0.shape[1] * 5 // 6:
+                logger.debug("判断是否是目标门，太靠右了贴着入口，否")
+                return False
+            else:
+                if next_room_direction == 'DOWN' and door_box[1] > img0.shape[0] * 775 // 1000 and (img0.shape[1] // 7 < door_box[0] < img0.shape[1] * 6 // 7):
+                    logger.debug("判断是否是目标门，目标下，可能是")
+                    return True
+                if next_room_direction == 'UP' and door_box[1] < img0.shape[0] * 0.72 and (img0.shape[1] // 7 < door_box[0] < img0.shape[1] * 6 // 7):
+                    logger.debug("判断是否是目标门，目标上，可能是")
+                    return True
+    logger.warning("判断是否是目标门，无法判断，否")
+    return False
+
+
 # <<<<<<<<<<<<<<<< 方法定义 <<<<<<<<<<<<<<<<
 
 
@@ -409,7 +472,7 @@ def main_script():
     # 获取角色配置列表
     role_list = get_role_config_list()
     logger.info("读取角色配置列表...")
-    logger.debug(f"共有{len(role_list)}个角色...")
+    logger.info(f"共有{len(role_list)}个角色...")
 
     pause_event.wait()  # 暂停
     # 遍历角色, 循环刷图
@@ -419,7 +482,7 @@ def main_script():
         role = role_list[i]
         # 判断,从指定的角色开始,其余的跳过
         if first_role_no != -1 and (i + 1) < first_role_no:
-            logger.debug(f'[跳过]-【{i + 1}】[{role.name}]...')
+            logger.warning(f'[跳过]-【{i + 1}】[{role.name}]...')
             continue
         logger.warning(f'第【{i + 1}】个角色，【{role.name}】 开始了')
         oen_role_start_time = datetime.now()
@@ -437,10 +500,10 @@ def main_script():
         # 确保展示右下角的图标
         show_right_bottom_icon(capturer.capture(), x, y)
 
-        logger.debug(f'设置的拥有疲劳值: {role.fatigue_all}')
+        logger.info(f'设置的拥有疲劳值: {role.fatigue_all}')
 
         ocr_fatigue = do_ocr_fatigue_retry(handle, x, y, reader, 5)
-        logger.debug(f'识别的拥有疲劳值: {ocr_fatigue}')
+        logger.info(f'识别的拥有疲劳值: {ocr_fatigue}')
         if ocr_fatigue is not None:
             if role.fatigue_all != ocr_fatigue:
                 logger.warning(f'更新疲劳值--->(计算): {role.fatigue_all},(识别): {ocr_fatigue}')
@@ -452,7 +515,7 @@ def main_script():
         if game_mode == 3 or game_mode == 4:
             fatigue_cost = 8
 
-        logger.debug(f'{role.name},拥有疲劳值:{role.fatigue_all},预留疲劳值:{role.fatigue_reserved}')
+        logger.info(f'{role.name},拥有疲劳值:{role.fatigue_all},预留疲劳值:{role.fatigue_reserved}')
 
         # 如果需要刷图,这选择副本,进入副本
         need_fight = current_fatigue - fatigue_cost >= role.fatigue_reserved if role.fatigue_reserved > 0 else current_fatigue > 0
@@ -472,7 +535,7 @@ def main_script():
             pause_event.wait()  # 暂停
             # 奶爸刷图,切换输出加点
             if '奶爸' in role.name:
-                logger.debug("是奶爸,准备切换锤子护石...")
+                logger.info("是奶爸,准备切换锤子护石...")
                 crusader_to_battle(x, y)
 
             pause_event.wait()  # 暂停
@@ -480,20 +543,20 @@ def main_script():
 
             if game_mode != 2:
                 # N 点第一个
-                logger.debug("传送到风暴门口,选地图...")
+                logger.info("传送到风暴门口,选地图...")
                 # 传送到风暴门口
                 from_sailiya_to_abyss(x, y)
-                logger.debug("先向上移，保持顶到最上位置。。")
-                kbu.do_press_with_time(Key.up, 1500, 50)
-                # 让角色走到最左面，进图选择页面
-                logger.debug("再向左走，进入选择地图页面。。")
-                kbu.do_press_with_time(Key.left, 2500, 300)
+                logger.info("先向上移，保持顶到最上位置。。")
+                kbu.do_press_with_time(Key.up, 800, 50)
+                # # 让角色走到最左面，进图选择页面
+                # logger.info("再向左走，进入选择地图页面。。")
+                # kbu.do_press_with_time(Key.left, 2500, 300)
 
                 # 先向右移动一点，以防一传过来的就离得很近
-                logger.debug("向右移一点，以防一传过来的就离得很近。。")
-                kbu.do_press_with_time(Key.right, 1500, 50)
-                logger.debug("向左走向左走，进入选择地图页面。。")
-                kbu.do_press_with_time(Key.left, 2000, 300)
+                logger.info("向右移一点，以防一传过来的就离得很近。。")
+                kbu.do_press_with_time(Key.right, 1000, 50)
+                logger.info("向左走向左走，进入选择地图页面。。")
+                kbu.do_press_with_time(Key.left, 2500, 50)
                 time.sleep(0.5)
                 time.sleep(1.5)  # 先等自己移动到深渊图
 
@@ -509,7 +572,7 @@ def main_script():
             pause_event.wait()  # 暂停
 
         # 刷图流程开始>>>>>>>>>>
-        logger.info(f'第【{i + 1}】个角色【{role.name}】已经进入地图,刷图打怪循环开始...')
+        logger.warning(f'第【{i + 1}】个角色【{role.name}】已经进入地图,刷图打怪循环开始...')
 
         # 隐藏掉右下角的图标
         if need_fight:
@@ -525,7 +588,7 @@ def main_script():
 
         # todo 循环进图开始>>>>>>>>>>>>>>>>>>>>>>>>
         while not finished and need_fight:  # 循环进图
-            # 先要等待地图加载
+            # 先要等待地图加载 todo 改动态识别
             time.sleep(4.5)
 
             # 不管了,全部释放掉
@@ -539,7 +602,7 @@ def main_script():
 
             # 进不去
             if not enter_map_success:
-                logger.debug(f'【{role.name}】，进不去地图,结束当前角色')
+                logger.error(f'【{role.name}】，进不去地图,结束当前角色')
                 time.sleep(0.2)
                 # esc 关闭地图选择界面
                 kbu.do_press(Key.esc)
@@ -549,11 +612,12 @@ def main_script():
             pause_event.wait()  # 暂停
 
             fight_count += 1
-            logger.debug(f'{role.name} 刷图,第 {fight_count} 次，开始...')
+            logger.info(f'【{role.name}】 刷图,第 {fight_count} 次，开始...')
+            one_game_start = time.time()
 
             # # 记录疲劳值
             current_fatigue_ocr = do_ocr_fatigue_retry(handle, x, y, reader, 5)  # 识别疲劳值
-            logger.debug(f'当前还有疲劳值(识别): {current_fatigue_ocr}')
+            logger.info(f'当前还有疲劳值(识别): {current_fatigue_ocr}')
 
             global continue_pressed
             if continue_pressed:
@@ -563,12 +627,12 @@ def main_script():
             pause_event.wait()  # 暂停
 
             # 上Buff
-            logger.debug(f'准备上Buff..')
+            logger.info(f'准备上Buff..')
             if role.buff_effective:
                 for buff in role.buffs:
                     kbu.do_buff(buff)
             else:
-                logger.debug(f'不需要上Buff..')
+                logger.info(f'不需要上Buff..')
 
             # 分析小地图
             cols, rows = 0, 0
@@ -586,7 +650,7 @@ def main_script():
                     # 分析小地图的行列
                     cols = map_util.get_colum_count(img0)
                     rows = map_util.get_row_count(img0)
-                    logger.error("分析小地图的行列{},{}", rows, cols)
+                    logger.warning("分析小地图的行列{},{}", rows, cols)
 
                     # 裁剪小地图区域
                     map_crop = map_util.get_small_map_region_img(img0, rows, cols)
@@ -604,10 +668,10 @@ def main_script():
                 analyse_map_error = boss_room is None or current_room is None or boss_room == (-1, -1) or current_room == (-1, -1)
                 if analyse_map_error:
                     map_error_cnt = map_error_cnt + 1
-                    cv2.imwrite(f'errorDetectMap_init_{map_error_cnt}.jpg', img0)
+                    # cv2.imwrite(f'errorDetectMap_init_{map_error_cnt}.jpg', img0)
                     logger.error(f"分析小地图的行列init，第 {map_error_cnt} 次出错,行列是 {rows} , {cols}")
                     logger.error("暂停2秒继续重试！！")
-                    time.sleep(2)
+                    time.sleep(1)
                 else:
                     map_error_cnt = 0
 
@@ -620,7 +684,7 @@ def main_script():
             # 初始化
             finder = PathFinder(rows, cols, boss_room)
 
-            logger.debug(f'准备打怪..')
+            logger.info(f'准备打怪..')
 
             # todo 循环打怪过图 循环开始////////////////////////////////
             fq = FixedLengthQueue(max_length=30)
@@ -664,7 +728,7 @@ def main_script():
                 )
 
                 if results is None or len(results) == 0 or len(results[0].boxes) == 0:
-                    # logger.debug('模型没有识别到物体')
+                    # logger.info('模型没有识别到物体')
                     if not sss_appeared:
                         mover.move(target_direction=random.choice(kbu.single_direct))
                     continue
@@ -698,16 +762,19 @@ def main_script():
                 sss_exist = det.sss_exist
 
                 if stuck_room_idx is not None:
-                    logger.error("材料卡住了,loot_xywh_list置空")
+                    logger.debug("材料卡住了,loot_xywh_list置空")
                     loot_xywh_list = []
                     gold_xywh_list = []
 
                 if sss_exist or continue_exist or shop_exist or shop_mystery_exist:
-                    # logger.warning(f"出现翻牌{sss_exist}，再次挑战了{continue_exist}")
-                    sss_appeared = True
+                    # logger.debug(f"出现翻牌{sss_exist}，再次挑战了{continue_exist}")
+                    if not sss_appeared:
+                        sss_appeared = True
+                        logger.warning(f'【{role.name}】 刷图,第 {fight_count} 次，打怪结束，耗时...{(time.time() - one_game_start):.1f}秒')
                 if door_boss_xywh_list:
-                    logger.warning(f"出现boss门了")
-                    boss_door_appeared = True
+                    if not boss_door_appeared:
+                        logger.info(f"出现boss门了")
+                        boss_door_appeared = True
 
                 if hero_xywh:
                     fq.enqueue((hero_xywh[0], hero_xywh[1]))
@@ -718,7 +785,26 @@ def main_script():
                         kbd_current_direction = mover.get_current_direction()
                         # 先看是不是在门上
                         if len(door_xywh_list + door_boss_xywh_list) > 0 and exist_near(hero_xywh, door_xywh_list + door_boss_xywh_list, 100):
-                            if hero_xywh[0] > img0.shape[1] * 4 // 5:
+                            # allow_directions_, next_room_direction_ = None, None
+                            # try:
+                            #     # 裁剪小地图区域
+                            #     map_crop = map_util.get_small_map_region_img(img0, rows, cols)
+                            #     # 当前房间位置
+                            #     current_room = map_util.current_room_index_cropped(map_crop, rows, cols)
+                            #     logger.info('小卡，当前房间是 {}', current_room)
+                            #     allow_directions_ = map_util.get_allow_directions(map_crop, cur_row, cur_col)
+                            #     next_room_direction_ = finder.get_next_direction((cur_row, cur_col), allow_directions_)
+                            # except Exception as e:
+                            #     logger.error(e)
+                            #     traceback.print_exc()
+                            stand_on_door = exist_near(hero_xywh, door_xywh_list + door_boss_xywh_list, 100)
+                            if hero_xywh[0] > img0.shape[1] * 4 // 5 and stand_on_door[0] > img0.shape[1] * 4 // 5:
+                                logger.debug("人在右边2")
+                                random_direct = "LEFT"
+                            elif hero_xywh[0] < img0.shape[1] * 1 // 5 and stand_on_door[0] < img0.shape[1] * 1 // 5:
+                                logger.debug("人在左边2")
+                                random_direct = "RIGHT"
+                            elif hero_xywh[0] > img0.shape[1] * 4 // 5:
                                 logger.debug("人在右边")
                                 random_direct = random.choice(list(filter(lambda x1: x1 != "RIGHT" and x1 != kbd_current_direction, kbu.single_direct)))
                             elif hero_xywh[0] < img0.shape[1] * 1 // 5:
@@ -731,19 +817,30 @@ def main_script():
                                 logger.debug("人在上面")
                                 random_direct = random.choice(list(filter(lambda x1: x1 != "UP" and x1 != kbd_current_direction, kbu.single_direct)))
                         else:
-                            logger.error(f"x轴上位置：{hero_xywh[0] / img0.shape[1]}")
-                            logger.error(f"y轴上位置：{hero_xywh[1] / img0.shape[0]}")
-                            if hero_xywh[0] > img0.shape[1] * 3 // 4 and (mover.get_current_direction() is None or "RIGHT" in mover.get_current_direction()):
-                                logger.debug("人在右边2")
+                            logger.debug(f"x轴上位置：{hero_xywh[0]:.2f},{(hero_xywh[0] / img0.shape[1]):.2f}---,current:{mover.get_current_direction()}")
+                            logger.debug(f"y轴上位置：{hero_xywh[1]:.2f},{(hero_xywh[1] / img0.shape[0]):.2f}---,current:{mover.get_current_direction()}")
+
+                            if hero_xywh[1] < 400 and hero_xywh[0] > 850 and ("UP" in mover.get_current_direction() or "RIGHT" in mover.get_current_direction()):
+                                logger.warning("人在右边3")
                                 mover.move(target_direction="LEFT")
                                 time.sleep(1.2)
-                                logger.error("强制向左1秒")
+                                logger.warning("强制向左1秒")
+                            elif hero_xywh[0] > img0.shape[1] * 3 // 4 and (mover.get_current_direction() is None or "RIGHT" in mover.get_current_direction()):
+                                logger.warning("人在右边2")
+                                mover.move(target_direction="LEFT")
+                                time.sleep(1.2)
+                                logger.warning("强制向左1秒")
                                 random_direct = random.choice(list(filter(lambda x1: x1 != "RIGHT" and x1 != kbd_current_direction, kbu.single_direct)))
-                            elif hero_xywh[0] < img0.shape[1] * 1 // 5 and (mover.get_current_direction() is None or "LEFT" in mover.get_current_direction()):
-                                logger.debug("人在左边2")
+                            elif hero_xywh[1] < 400 and hero_xywh[0] < 200 and ("UP" in mover.get_current_direction() or "LEFT" in mover.get_current_direction()):
+                                logger.warning("人在左边3")
                                 mover.move(target_direction="RIGHT")
                                 time.sleep(1.2)
-                                logger.error("强制向右1秒")
+                                logger.warning("强制向右1秒")
+                            elif hero_xywh[0] < img0.shape[1] * 1 // 5 and (mover.get_current_direction() is None or "LEFT" in mover.get_current_direction()):
+                                logger.warning("人在左边2")
+                                mover.move(target_direction="RIGHT")
+                                time.sleep(1.2)
+                                logger.warning("强制向右1秒")
                                 random_direct = random.choice(list(filter(lambda x1: x1 != "LEFT" and x1 != kbd_current_direction, kbu.single_direct)))
                             else:
                                 try:
@@ -751,22 +848,36 @@ def main_script():
                                     map_crop = map_util.get_small_map_region_img(img0, rows, cols)
                                     # 当前房间位置
                                     current_room = map_util.current_room_index_cropped(map_crop, rows, cols)
-                                    logger.info('小卡，当前房间是 {}', current_room)
-                                    if not hero_stuck_pos[current_room]:
-                                        hero_stuck_pos[current_room] = []
-                                        hero_stuck_pos[current_room].append(hero_xywh)
+                                    logger.warning('小卡，当前房间是 {}', current_room)
+                                    # if not hero_stuck_pos[current_room]:
+                                    #     hero_stuck_pos[current_room] = []
+                                    #     hero_stuck_pos[current_room].append(hero_xywh)
                                     if current_room != (-1, -1):
+                                        previous = None
                                         if current_room in [item[0] for item in path_stack]:
                                             for ii in range(len(path_stack) - 1, 0, -1):
                                                 if path_stack[ii][0] == current_room:
                                                     previous = path_stack[ii - 1][1]
                                                     logger.info('小卡，当前房间finder过，之前是向【{}】走，走过来的', previous)
-                                                    random_direct = random.choice(list(filter(lambda x1: x1 != get_opposite_direction(previous) and x1 != kbd_current_direction, kbu.single_direct)))
+                                                    if hero_xywh[0] < 100 and door_xywh_list and len(door_xywh_list) == 1 and door_xywh_list[0][0] < 100:
+                                                        logger.debug("左侧处理")
+                                                        random_direct = random.choice(list(filter(lambda x1: x1 != get_opposite_direction(previous) and x1 != kbd_current_direction and x1 not in ["DOWN", "LEFT"], kbu.single_direct)))
+                                                    else:
+                                                        random_direct = random.choice(list(filter(lambda x1: x1 != get_opposite_direction(previous) and x1 != kbd_current_direction, kbu.single_direct)))
                                                     break
                                         else:
                                             logger.info('小卡，当前房间未finder过，之前是向【{}】走，走过来的', path_stack[-1][1])
+                                            previous = path_stack[-1][1]
                                             random_direct = random.choice(
                                                 list(filter(lambda x1: x1 != get_opposite_direction(path_stack[-1][1]) and x1 != kbd_current_direction, kbu.single_direct)))
+
+                                        if hero_xywh[1] < 400 and mover.get_current_direction() == "UP" and previous == "RIGHT" and hero_xywh[0] < 630:
+                                            logger.debug("走到底，上小卡处理1。。")
+                                            random_direct = random.choice(["RIGHT", "RIGHT_DOWN"])
+                                        elif hero_xywh[1] < 400 and mover.get_current_direction() == "UP" and previous == "LEFT" and hero_xywh[0] > 420:
+                                            logger.debug("走到底，上小卡处理2。。")
+                                            random_direct = random.choice(["LEFT", "LEFT_DOWN"])
+
                                 except Exception as e:
                                     logger.error(e)
                                     traceback.print_exc()
@@ -785,7 +896,7 @@ def main_script():
                         # mover._release_all_keys()
                         mover.move(target_direction=random_direct)
                     else:
-                        logger.warning('未检测到角色,已经结算了')
+                        logger.info('未检测到角色,已经结算了')
                         if not collect_loot_pressed and (sss_exist or continue_exist or shop_exist or shop_mystery_exist):
                             # kbu.do_press_with_time(Key.left, 3000, 100)
                             mover.move(target_direction="LEFT")
@@ -896,7 +1007,7 @@ def main_script():
                                 logger.info('当前房间是 {}', current_room)
                                 cur_row, cur_col = current_room
 
-                                if boss_door_appeared and current_room == (-1, -1):
+                                if current_room == boss_room or (boss_door_appeared and current_room == (-1, -1)):
                                     in_boss_room = True
 
                                 allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
@@ -908,17 +1019,17 @@ def main_script():
                             analyse_map_door_error = not allow_directions
                             if analyse_map_door_error:
                                 if in_boss_room:
-                                    logger.error("在boss房间分析出错，无视")
+                                    logger.info("在boss房间分析出错，无视")
                                     break
                                 map_door_error_cnt = map_door_error_cnt + 1
-                                cv2.imwrite(f'errorDetectMap_door_{map_door_error_cnt}.jpg', map_crop)
+                                # cv2.imwrite(f'errorDetectMap_door_{map_door_error_cnt}.jpg', map_crop)
                                 logger.error(f"分析小地图的行列door，第 {map_door_error_cnt} 次出错,行列是 {rows} , {cols}")
                                 logger.error("暂停2秒继续重试！！")
                                 time.sleep(2)
                             else:
                                 map_door_error_cnt = 0
                                 next_room_direction = finder.get_next_direction((cur_row, cur_col), allow_directions)
-                                logger.warning(f"next_room_direction:{next_room_direction}")
+                                logger.debug(f"next_room_direction:{next_room_direction}")
 
                                 if path_stack and path_stack[-1][0] == current_room:
                                     pass
@@ -943,7 +1054,7 @@ def main_script():
                         continue
 
                     if stuck_room_idx is not None and stuck_room_idx == current_room:  # 已经被卡住了，且还位于被卡房间（材料置空--无意义--能进这个逻辑，材料list肯定已经是空的）
-                        logger.error("已经被材料时有时无卡住了,忽略材料")
+                        logger.debug("已经被材料时有时无卡住了,忽略材料")
                         loot_xywh_list = []
                         gold_xywh_list = []
                         wait_for_next_room = hero_xywh and (
@@ -955,7 +1066,7 @@ def main_script():
                         room_idx_list.enqueue(current_room)  # 记录识别的房间位置
                         room_is_same = room_idx_list.room_is_same(min_size=80)
                         if room_is_same and not hero_pos_is_stable:  # 之前没卡住，刚刚计算得到卡住
-                            logger.error(f"可能可能可能可能被材料时有时无 卡住了 当前房间{current_room}")
+                            logger.warning(f"可能可能可能可能被材料时有时无 卡住了 当前房间{current_room}")
                             stuck_room_idx = current_room
                             room_idx_list.clear()
                         else:  # 之前没卡住，现在也没卡住
@@ -1012,8 +1123,13 @@ def main_script():
                 if wait_for_next_room:
 
                     pause_event.wait()  # 暂停
+
+                    is_target_door = judge_is_target_door(current_room, door_box, hero_xywh, next_room_direction, allow_directions, path_stack, det, img0)
+                    logger.info(f"判断目标门：{is_target_door}")
+
                     # todo 门还要处理，做追踪？
-                    if len(allow_directions) > len(door_xywh_list + door_boss_xywh_list):
+                    # if len(allow_directions) > len(door_xywh_list + door_boss_xywh_list):
+                    if not is_target_door:
                         # 尚未出现目标门,需要继续移动寻找 todo 当前画面一个门也没有的时候进不来这个逻辑
                         if next_room_direction == 'RIGHT' and (not door_box or door_box[0] < img0.shape[1] * 4 // 5):  # 右侧四分之一还没有门出现,继续往右
                             logger.debug("目标房间在右边---->右侧四分之一还没有门出现,继续往右")
@@ -1037,29 +1153,31 @@ def main_script():
                     if door_in_range:
                         # 不管了,全部释放掉
                         mover._release_all_keys()
-                        logger.debug("门在命中范围内,等待过图")
+                        logger.info("门在命中范围内,等待过图")
                         time.sleep(0.1)
                         if stuck_room_idx is not None:
                             # todo 除歼灭不存在 跳过材料时无卡住的逻辑
-                            logger.error("等三秒直接跳过材料")
+                            logger.debug("等三秒直接跳过材料")
                             time.sleep(1)
                             # 可能没过去，随便走两步，(todo 根据角色位置，决定往哪里走)
                             if next_room_direction == 'RIGHT':
-                                logger.error("先向左走两步")
+                                logger.debug("先向左走两步")
                                 mover.move(target_direction="LEFT")
                                 time.sleep(0.5)
                             if next_room_direction == 'LEFT':
-                                logger.error("先向右走两步")
+                                logger.debug("先向右走两步")
                                 mover.move(target_direction="RIGHT")
                                 time.sleep(0.5)
                             if next_room_direction == 'UP':
-                                logger.error("先向下走两步")
+                                logger.debug("先向下走两步")
                                 mover.move(target_direction="DOWN")
                                 time.sleep(0.5)
                             if next_room_direction == 'DOWN':
-                                logger.error("先向上走两步")
+                                logger.debug("先向上走两步")
                                 mover.move(target_direction="UP")
                                 time.sleep(0.5)
+                            # stuck_room_idx = None
+                            # room_idx_list.clear()
                         continue
 
                     # 已经确定目标门,移动到目标位置
@@ -1137,7 +1255,11 @@ def main_script():
                             # 推荐技能
                             skill_name = skill_util.suggest_skill(role, img0)
                         skill_util.cast_skill(skill_name)
-                        time.sleep(0.9)
+                        # 小等一下 比如等怪死
+                        if skill_name == 'x':
+                            ...
+                        else:
+                            time.sleep(0.1)
                         continue
 
                     pause_event.wait()  # 暂停
@@ -1195,7 +1317,7 @@ def main_script():
                 # 逻辑处理-出现菜单>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                 if menu_exist:
                     kbu.do_press(Key.esc)
-                    print("关闭菜单")
+                    logger.info("关闭菜单")
                     time.sleep(0.1)
                     continue
                 # 逻辑处理-出现菜单<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -1206,7 +1328,7 @@ def main_script():
                         # logger.error(f"有金币金币金币!  {gold_xywh_list}")
                         pass
                     if sss_appeared and not collect_loot_pressed:
-                        logger.warning("预先移动物品到脚下")
+                        logger.info("预先移动物品到脚下")
                         # 不管了,全部释放掉
                         mover._release_all_keys()
 
@@ -1214,17 +1336,19 @@ def main_script():
                         collect_loot_pressed_time = time.time()
 
                         executor.submit(lambda: (
-                            logger.warning("预先移动物品到脚下"),
+                            logger.info("预先移动物品到脚下"),
                             time.sleep(2.1),
                             kbu.do_press(dnf.Key_collect_loot),
                             time.sleep(0.1),
                             kbu.do_press_with_time('x', 4000 if game_mode == 4 else 2000, 50),
-                            logger.warning("预先长按x 按完x了"),
+                            logger.info("预先长按x 按完x了"),
                         ))
 
                         continue
                     elif sss_appeared and collect_loot_pressed and time.time() - collect_loot_pressed_time < 7:
-                        logger.warning(f"已经预先按下移动物品了，10s内忽略拾取...{int(7 - (time.time() - collect_loot_pressed_time))}")
+                        tt = time.time()
+                        if 0.1 < tt - int(tt) < 0.2:  # 0.6 < tt - int(tt) < 0.75
+                            logger.info(f"已经预先按下移动物品了，10s内忽略拾取...{int(7 - (time.time() - collect_loot_pressed_time))}")
                         continue
 
                     # 掉落物在范围内,直接拾取
@@ -1243,9 +1367,10 @@ def main_script():
 
                     # 掉落物不在范围内,需要移动
                     byWalk = False
-                    if material_min_distance < 200:
+                    if material_min_distance < 150:
                         byWalk = True
-                    slow_pickup = not material_is_gold or material_min_distance < 100
+                    # slow_pickup = not material_is_gold or material_min_distance < 100
+                    slow_pickup = material_min_distance < 100
 
                     # todo 靠近门口的的,小碎步去捡
                     # door_is_near = exist_near(material_box, door_xywh_list, threshold=200)
@@ -1253,33 +1378,39 @@ def main_script():
                     near_door_list = get_objs_in_range(material_box, door_xywh_list + door_boss_xywh_list, threshold=200)
 
                     if near_door_list:
-                        logger.error("存在距离材料很近的门！")
+                        logger.warning("存在距离材料很近的门！")
                         for door in near_door_list:
                             # 如果材料位于门和角色之间
-                            if (door[0] <= material_box[0] <= hero_xywh[0] or door[0] >= material_box[0] >= hero_xywh[
-                                0]) and (door[1] <= material_box[1] <= hero_xywh[1] or door[1] >= material_box[1] >=
-                                         hero_xywh[1] or (abs(door[1] - material_box[1]) < 100 and abs(
-                                        door[1] - hero_xywh[1]) < 100 and abs(
-                                        material_box[1] - hero_xywh[1]) < 100)):
-                                logger.error(f"门:{door}, 材料：{material_box}， 角色：{hero_xywh}")
+                            if (
+                                    (door[0] <= material_box[0] <= hero_xywh[0] or door[0] >= material_box[0] >= hero_xywh[0])
+                                    and (
+                                        door[1] <= material_box[1] <= hero_xywh[1]
+                                        or door[1] >= material_box[1] >= hero_xywh[1]
+                                        or (abs(door[1] - material_box[1]) < 100 and abs(door[1] - hero_xywh[1]) < 100 and abs(material_box[1] - hero_xywh[1]) < 100)
+                                    )
+                            ):
+                                # logger.error(f"门:{door}, 材料：{material_box}， 角色：{hero_xywh}")
                                 door_is_near = True
-                            elif (door[1] <= material_box[1] <= hero_xywh[1] or door[1] >= material_box[1] >= hero_xywh[
-                                1]) and (door[0] <= material_box[0] <= hero_xywh[0] or door[0] >= material_box[0] >=
-                                         hero_xywh[0] or (abs(door[0] - material_box[0]) < 100 and abs(
-                                        door[0] - hero_xywh[0]) < 100 and abs(
-                                        material_box[0] - hero_xywh[0]) < 100)):
-                                logger.error(f"门:{door}, 材料：{material_box}， 角色：{hero_xywh}")
+                            elif (
+                                    (door[1] <= material_box[1] <= hero_xywh[1] or door[1] >= material_box[1] >= hero_xywh[1])
+                                    and (
+                                        door[0] <= material_box[0] <= hero_xywh[0]
+                                        or door[0] >= material_box[0] >= hero_xywh[0]
+                                        or (abs(door[0] - material_box[0]) < 100 and abs(door[0] - hero_xywh[0]) < 100 and abs(material_box[0] - hero_xywh[0]) < 100)
+                                    )
+                            ):
+                                # logger.error(f"门:{door}, 材料：{material_box}， 角色：{hero_xywh}")
                                 door_is_near = True
 
                         if door_is_near:
-                            logger.debug("材料离门口太近了!!")
+                            logger.info("材料离门口太近了!!")
                             if gold_xywh_list:
-                                logger.error(f"是金币离门口太近了!!!  {gold_xywh_list}")
+                                logger.info(f"是金币离门口太近了!!!  {gold_xywh_list}")
                             byWalk = True
                             if not slow_pickup:
                                 slow_pickup = True
                         else:
-                            logger.error("但是材料角色门口 不影响")
+                            logger.info("但是材料角色门口 不影响")
 
                     pause_event.wait()  # 暂停
                     move_mode = 'walking' if byWalk else 'running'
@@ -1344,9 +1475,9 @@ def main_script():
                         if shop_mystery_exist:
                             # cv2.imwrite(f'mystery_{time.time()}.png',img0)
                             buy_from_mystery_shop(img0, x, y)
-                            logger.error("神秘商店处理完毕")
+                            logger.info("神秘商店处理完毕")
                         kbu.do_press(Key.esc)
-                        logger.warning("商店开着,需要esc关闭")
+                        logger.info("商店开着,需要esc关闭")
                         time.sleep(0.1)
                         continue
 
@@ -1360,13 +1491,13 @@ def main_script():
                     # 聚集物品,按x
                     if (loot_xywh_list or gold_xywh_list) and not collect_loot_pressed:
                         if not collect_loot_pressed:
-                            logger.warning("中间移动物品到脚下")
+                            logger.info("中间移动物品到脚下")
                             kbu.do_press(dnf.Key_collect_loot)
                             collect_loot_pressed = True
                             collect_loot_pressed_time = time.time()
                             time.sleep(0.1)
                             kbu.do_press_with_time('x', 4000 if game_mode == 4 else 2000, 50)
-                            logger.warning("中间长按x 按完x了")
+                            logger.info("中间长按x 按完x了")
                         continue
                     continue
                 # 逻辑处理-出现再次挑战<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -1380,22 +1511,22 @@ def main_script():
                     if shop_mystery_exist:
                         # cv2.imwrite(f'mystery2_{time.time()}.png',img0)
                         buy_from_mystery_shop(img0, x, y)
-                        logger.error("翻牌时有神秘商店，处理完毕")
+                        logger.info("翻牌时有神秘商店，处理完毕")
 
                     if time.time() - card_appear_time > 0.5:
                         if not card_esc_time:
                             card_esc_time = time.time()
                             # 按下esc跳过翻牌
                             kbu.do_press(Key.esc)
-                            logger.error(f"关闭翻牌,shop_mystery_exist:{shop_mystery_exist},shop_exist:{shop_exist}")
+                            logger.debug(f"关闭翻牌,shop_mystery_exist:{shop_mystery_exist},shop_exist:{shop_exist}")
                         elif time.time() - card_esc_time >= 1.5:
                             # 按下esc跳过翻牌
                             kbu.do_press(Key.esc)
-                            logger.error(f"再次关闭翻牌,shop_mystery_exist:{shop_mystery_exist},shop_exist:{shop_exist}")
+                            logger.debug(f"再次关闭翻牌,shop_mystery_exist:{shop_mystery_exist},shop_exist:{shop_exist}")
                         else:
-                            logger.error("翻牌已经esc过，先等等1.5s再关闭")
+                            logger.debug("翻牌已经esc过，先等等1.5s再关闭")
                     else:
-                        logger.error("翻牌刚刚出现，先等等再关闭")
+                        logger.debug("翻牌刚刚出现，先等等再关闭")
 
                     # 不管了,全部释放掉
                     mover._release_all_keys()
@@ -1420,24 +1551,39 @@ def main_script():
                             map_crop = map_util.get_small_map_region_img(img0, rows, cols)
                             cur_row, cur_col = map_util.current_room_index_cropped(map_crop, rows, cols)
                             allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
-                            logger.warning(f"未识别到尝试allow_directions:{allow_directions}")
+                            logger.debug(f"未识别到尝试allow_directions:{allow_directions}")
                             if not allow_directions:
                                 # cv2.imwrite("no_allow_directions_full1.jpg", img0)
                                 # cv2.imwrite("no_allow_directions_crop1.jpg", map_crop)
-                                print(f'小地图没找到对应的图{(rows, cols)},{(cur_row, cur_col)}！！！！')
+                                logger.debug(f'小地图没找到对应的图{(rows, cols)},{(cur_row, cur_col)}！！！！')
                                 time.sleep(1)
                                 img00 = capturer.capture()
                                 map_crop = map_util.get_small_map_region_img(img00, rows, cols)
                                 cur_row, cur_col = map_util.current_room_index_cropped(map_crop, rows, cols)
                                 allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
+                                current_room = (cur_row, cur_col)
 
                             next_room_direction = finder.get_next_direction((cur_row, cur_col), allow_directions)
-                            print("计算方向2", next_room_direction)
-                            logger.warning(f"除了角色什么也没识别到,当前房间: {cur_row},{cur_col},允许方向: {allow_directions}, 下个方向: {next_room_direction}")
+                            logger.debug("计算方向2", next_room_direction)
+                            logger.info(f"除了角色什么也没识别到,当前房间: {cur_row},{cur_col},允许方向: {allow_directions}, 下个方向: {next_room_direction}")
+
+                            # previous = None
+                            # if current_room in [item[0] for item in path_stack]:
+                            #     for ii in range(len(path_stack) - 1, 0, -1):
+                            #         if path_stack[ii][0] == current_room:
+                            #             previous = path_stack[ii - 1][1]
+                            #             break
+                            #
+                            # if hero_xywh[1] < 360 and mover.get_current_direction() == "UP":
+                            #     if previous == "RIGHT" and hero_xywh[0] < img0.shape[1] * 3 // 5:
+                            #         direct = "RIGHT"
+                            #     elif previous == "LEFT" and hero_xywh[0] > img0.shape[1] * 2 // 5:
+                            #         direct = "LEFT"
+
                             if next_room_direction:
                                 direct = next_room_direction
                         except Exception as e:
-                            print(f"捕获到异常: {e}")
+                            logger.warning(f"捕获到异常: {e}")
                             traceback.print_exc()
                             logger.warning('小地图分析异常报错,跳过2')
                             direct = random.choice(random.choice([kbu.single_direct, kbu.double_direct]))
@@ -1446,7 +1592,7 @@ def main_script():
                             logger.warning('什么都没检测到(没有门)已经3分钟了,随机方向')
                             direct = random.choice(random.choice([kbu.single_direct, kbu.double_direct]))
 
-                        logger.warning(f"尝试方向--->{direct}")
+                        logger.info(f"尝试方向--->{direct}")
                         # mover._release_all_keys()
                         mover.move(target_direction=direct)
 
@@ -1465,13 +1611,13 @@ def main_script():
             need_wait_collect_finish = False
             if not collect_loot_pressed:
                 executor.submit(lambda: (
-                    logger.warning("最后移动物品到脚下"),
+                    logger.info("最后移动物品到脚下"),
                     mover._release_all_keys(),
                     time.sleep(0.1),
                     kbu.do_press(dnf.Key_collect_loot),
                     time.sleep(0.1),
                     kbu.do_press_with_time('x', 4000 if game_mode == 4 else 2000, 0),
-                    logger.warning("最后长按x 按完x了")
+                    logger.info("最后长按x 按完x了")
                 ))
                 need_wait_collect_finish = True
 
@@ -1480,8 +1626,8 @@ def main_script():
             current_fatigue = do_ocr_fatigue_retry(handle, x, y, reader, 5)
             if role.fatigue_reserved > 0 and (current_fatigue - fatigue_cost) < role.fatigue_reserved:
                 # 再打一把就疲劳值就不够预留的了
-                logger.debug(f'再打一把就疲劳值就不够预留的{role.fatigue_reserved}了')
-                logger.debug(f'刷完{fight_count}次了，结束...')
+                logger.info(f'再打一把就疲劳值就不够预留的{role.fatigue_reserved}了')
+                logger.info(f'刷完{fight_count}次了，结束...')
                 if need_wait_collect_finish:
                     time.sleep(1.6)
                 # 返回城镇
@@ -1492,8 +1638,8 @@ def main_script():
 
             if current_fatigue <= 0:
                 # 再打一把就疲劳值就不够预留的了
-                logger.debug(f'没有疲劳值了')
-                logger.debug(f'刷完{fight_count}次了，结束...')
+                logger.info(f'没有疲劳值了')
+                logger.info(f'刷完{fight_count}次了，结束...')
                 if need_wait_collect_finish:
                     time.sleep(1.6)
                 # 返回城镇
@@ -1509,7 +1655,7 @@ def main_script():
             # 没的刷了,不能再次挑战了
             if (game_mode != 2 and text_exist and not btn_clickable) or (game_mode == 2 and not btn_exist):
                 pause_event.wait()  # 暂停
-                logger.debug(f'刷了{fight_count}次了,再次挑战禁用状态,不能再次挑战了...')
+                logger.info(f'刷了{fight_count}次了,再次挑战禁用状态,不能再次挑战了...')
                 if need_wait_collect_finish:
                     time.sleep(1.6)
                 # 返回城镇
@@ -1538,7 +1684,7 @@ def main_script():
         # time.sleep(0.5)
 
         time_diff = datetime.now() - oen_role_start_time
-        logger.warning(f'第【{i + 1}】个角色【{role.name}】刷图打怪循环结束...总计耗时: {time_diff.total_seconds() / 60} 分钟')
+        logger.warning(f'第【{i + 1}】个角色【{role.name}】刷图打怪循环结束...总计耗时: {(time_diff.total_seconds() / 60):.1f} 分钟')
 
         # 刷图流程结束<<<<<<<<<<
         # 展示掉右下角的图标
@@ -1598,7 +1744,7 @@ def main_script():
 
 
 # 等待按键,启动
-logger.debug(".....python主线程 启动..........")
+logger.info(".....python主线程 启动..........")
 logger.warning(f".....请按下 {dnf.key_start_script} 组合键开始脚本...")
 kboard.wait(dnf.key_start_script)  # 等待按下组合键
 winsound.PlaySound(config_.sound1, winsound.SND_FILENAME)
@@ -1610,8 +1756,8 @@ script_task_thread = threading.Thread(target=main_script)
 script_task_thread.daemon = True
 script_task_thread.start()
 start_time = datetime.now()
-logger.debug('')
-logger.debug(f'脚本开始: {start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+logger.info('')
+logger.info(f'脚本开始: {start_time.strftime("%Y-%m-%d %H:%M:%S")}')
 
 # 创建并启动监听中断按键线程
 listener_thread = threading.Thread(target=start_keyboard_listener)
@@ -1627,20 +1773,20 @@ while script_task_thread.is_alive():
     time.sleep(1)
 
 end_time = datetime.now()
-logger.debug(f'脚本开始: {start_time.strftime("%Y-%m-%d %H:%M:%S")}')
-logger.debug(f'脚本结束: {end_time.strftime("%Y-%m-%d %H:%M:%S")}')
+logger.info(f'脚本开始: {start_time.strftime("%Y-%m-%d %H:%M:%S")}')
+logger.info(f'脚本结束: {end_time.strftime("%Y-%m-%d %H:%M:%S")}')
 time_delta = end_time - start_time
-logger.debug(f'总计耗时: {time_delta.total_seconds() / 60} 分钟')
+logger.info(f'总计耗时: {(time_delta.total_seconds() / 60):.1f} 分钟')
 
 # 脚本正常执行完,不是被组合键中断的,并且配置了退出游戏
 if not stop_be_pressed and quit_game_after_finish:
-    logger.debug("正在退出游戏...")
+    logger.info("正在退出游戏...")
     clik_to_quit_game(handle, x, y)
     time.sleep(5)
 
-logger.debug("python主线程已停止.....")
+logger.info("python主线程已停止.....")
 
 if not stop_be_pressed and quit_game_after_finish and shutdown_pc_after_finish:
-    logger.debug("一分钟之后关机...")
+    logger.info("一分钟之后关机...")
     # os.system("shutdown /r /t 60")  # 60后秒重启
     os.system("shutdown /s /t 60")  # 60后秒关机
