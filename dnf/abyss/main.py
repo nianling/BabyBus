@@ -12,6 +12,7 @@ import re
 import threading
 import time
 from datetime import datetime
+import concurrent.futures
 
 import cv2
 import easyocr
@@ -58,6 +59,10 @@ from utils.custom_thread_pool_excutor import SingleTaskThreadPool
 from utils.keyboard_move_controller import MovementController
 from utils.utilities import plot_one_box
 from utils.window_utils import WindowCapture
+from utils.utilities import match_template_by_roi
+from utils.mail_sender import EmailSender
+from dnf.mail_config import config as mail_config
+from dnf.stronger.object_detect import object_detection_cv
 
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
@@ -154,6 +159,10 @@ pick_up_y = 15  # 捡材料命中范围，y轴距离
 # <<<<<<<<<<<<<<<< 脚本所需要的变量 <<<<<<<<<<<<<<<<
 mover = MovementController()
 executor = SingleTaskThreadPool()
+img_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+tool_executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
+mail_sender = EmailSender(mail_config)  # 初始化邮件发送器
+
 
 # 创建一个队列，用于主线程和展示线程之间的通信
 result_queue = queue.Queue()
@@ -584,6 +593,8 @@ def main_script():
             fight_victory = False  # 已经结算了
             door_absence_time = 0  # 什么也没识别到的时间(没识别到门)
             hole_appeared = False
+            boss_appeared = False
+            die_time = 0
 
             # frame = 0
             while True:  # 循环打怪过图
@@ -591,6 +602,10 @@ def main_script():
 
                 # 截图
                 img0 = capturer.capture()
+                # 识别
+                cv_det_task = None
+                if boss_appeared or hole_appeared or ball_appeared:
+                    cv_det_task = img_executor.submit(object_detection_cv, img0)
                 img4show = img0.copy()
                 # frame = frame + 1
                 # print('截图ing，，，', frame)
@@ -651,7 +666,43 @@ def main_script():
                     logger.info(f"出现大坑了")
                     hole_appeared = True
                 if boss_xywh_list:
+                    if not boss_appeared:
+                        boss_appeared = True
                     logger.info(f"出现boss了")
+                    
+                if cv_det_task:
+                    cv_det = cv_det_task.result()
+                    if cv_det and cv_det["death"]:
+                        logger.warning(f"角色死了")
+                        if time.time() - die_time > 11:
+                            die_time = time.time()
+                            logger.warning(f"死亡提醒!!")
+
+                            # 声音提醒
+                            tool_executor.submit(lambda: (
+                                winsound.Beep(800, 300), time.sleep(0.05),
+                                winsound.Beep(800, 300), time.sleep(0.05),
+                                winsound.Beep(800, 300), time.sleep(0.05),
+                                winsound.Beep(800, 1200)
+                            ))
+
+                            # 邮件提醒
+                            email_subject = f"深渊 {role.name}阵亡通知书"
+                            email_content = f"鏖战深渊，角色【{role.name}】不幸阵亡，及时查看处理。"
+                            mail_receiver = mail_config.get("receiver")
+                            tool_executor.submit(lambda: (
+                                mail_sender.send_email(email_subject, email_content, mail_receiver),
+                                logger.info("角色死亡 已经发送邮件提醒了")
+                            ))
+
+                        logger.warning(f"检测到死了，准备复活")
+                        time.sleep(8)  # 拖慢点复活
+                        kbu.do_press('x')
+                        time.sleep(0.1)
+                        kbu.do_press('x')
+                        time.sleep(0.1)
+                        kbu.do_press('x')
+                        time.sleep(0.1)
 
                 if hero_xywh:
                     pass

@@ -14,6 +14,7 @@ import time
 from datetime import datetime
 import queue
 import traceback
+import concurrent.futures
 
 import cv2
 import easyocr
@@ -71,6 +72,10 @@ from utils.keyboard_move_controller import MovementController
 from utils.utilities import plot_one_box
 from utils.window_utils import WindowCapture
 from dnf.stronger.path_finder import PathFinder
+from utils.utilities import match_template_by_roi
+from utils.mail_sender import EmailSender
+from dnf.mail_config import config as mail_config
+from dnf.stronger.object_detect import object_detection_cv
 
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
@@ -163,6 +168,11 @@ pick_up_y = 15  # 捡材料命中范围，y轴距离
 # <<<<<<<<<<<<<<<< 脚本所需要的变量 <<<<<<<<<<<<<<<<
 mover = MovementController()
 executor = SingleTaskThreadPool()
+img_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+tool_executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
+mail_sender = EmailSender(mail_config)  # 初始化邮件发送器
+
+
 
 # 创建一个队列，用于主线程和展示线程之间的通信
 result_queue = queue.Queue()
@@ -694,7 +704,7 @@ def main_script():
 
             collect_loot_pressed = False  # 按过移动物品了
             collect_loot_pressed_time = 0
-            fought_boss = False  # 遭遇boss了
+            boss_appeared = False  # 遭遇boss了
             sss_appeared = False  # 已经结算了
             door_absence_time = 0  # 什么也没识别到的时间(没识别到门)
             boss_door_appeared = False
@@ -702,6 +712,8 @@ def main_script():
             card_esc_time = 0
             card_appear_time = 0
             hero_stuck_pos = {}  # 卡住的位置 ((r,c),[(x,y),(x,y)])
+            die_time = 0
+            in_boss_room = False
 
             frame_time = time.time()
             while True:  # 循环打怪过图
@@ -716,6 +728,11 @@ def main_script():
 
                 # 截图
                 img0 = capturer.capture()
+                
+                # 识别
+                cv_det_task = None
+                if boss_appeared or in_boss_room or game_mode == 2:
+                    cv_det_task = img_executor.submit(object_detection_cv, img0)
                 img4show = img0.copy()
                 # 执行推理
                 results = model.predict(
@@ -775,6 +792,44 @@ def main_script():
                     if not boss_door_appeared:
                         logger.info(f"出现boss门了")
                         boss_door_appeared = True
+                if boss_xywh_list:
+                    if not boss_appeared:
+                        logger.info(f"出现boss了")
+                        boss_appeared = True
+                        in_boss_room = True
+                        
+                if cv_det_task:
+                    cv_det = cv_det_task.result()
+                    if cv_det and cv_det["death"]:
+
+                        logger.warning(f"角色死了")
+
+                        if time.time() - die_time > 11:
+                            die_time = time.time()
+                            logger.warning(f"死亡提醒!!")
+                            # 声音提醒 不要
+                            # 邮件提醒
+                            mode_name = (
+                                "白图" if game_mode == 1 else
+                                "每日1+1" if game_mode == 2 else
+                                "妖气追踪" if game_mode == 3 else
+                                "妖怪歼灭" if game_mode == 4 else
+                                "未知模式"
+                            )
+                            email_subject = f"{mode_name} {role.name}阵亡通知书"
+                            email_content = f"鏖战{mode_name}，角色【{role.name}】不幸阵亡，及时查看处理。"
+                            mail_receiver = mail_config.get("receiver")
+                            tool_executor.submit(lambda: (
+                                mail_sender.send_email(email_subject, email_content, mail_receiver),
+                                logger.info("角色死亡 已经发送邮件提醒了")
+                            ))
+
+                        logger.warning(f"检测到死了，准备复活")
+                        time.sleep(8)  # 拖慢点复活
+                        kbu.do_press('x')
+                        time.sleep(0.1)
+                        kbu.do_press('x')
+                        time.sleep(0.1)
 
                 if hero_xywh:
                     fq.enqueue((hero_xywh[0], hero_xywh[1]))
@@ -920,10 +975,6 @@ def main_script():
                         role_attack_center = (hero_xywh[0] + role.attack_center_x, hero_xywh[1])
                     else:
                         role_attack_center = (hero_xywh[0] - role.attack_center_x, hero_xywh[1])
-
-                    # todo boss识别还不准
-                    # if not fought_boss and boss_xywh_list is not None and len(boss_xywh_list) > 0:
-                    #     fought_boss = True
 
                     # 距离最近的怪 todo 改成最近的堆
                     # monster_box, _ = get_closest_obj(itertools.chain(monster_xywh_list, boss_xywh_list), role_attack_center)

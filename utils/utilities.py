@@ -39,6 +39,26 @@ def match_template(image, template, threshold=0.8):
     return matches
 
 
+def match_template_by_roi(image, roi_xywh, template, threshold=0.8):
+    """
+    返回匹配矩形的左上角,右下角坐标,可能有多个矩形
+    [((x1,y1),(x2,y2))]
+    """
+    x, y, w, h = roi_xywh  # ROI 区域
+    roi = image[y:y + h, x:x + w]
+    t_h, t_w = template.shape[:2]
+
+    result = cv2.matchTemplate(roi, template, cv2.TM_CCOEFF_NORMED)
+    loc = np.where(result >= threshold)
+    matches = []
+    for pt in zip(*loc[::-1]):
+        # print(result[pt[1], pt[0]])
+        left_top = (pt[0] + x, pt[1] + y)
+        right_bottom = (left_top[0] + t_w, left_top[1] + t_h)
+        matches.append((left_top, right_bottom))
+    return matches
+
+
 def match_template_one(image, template, threshold=0.8):
     """
     模板匹配,返回置信度最高的一个
