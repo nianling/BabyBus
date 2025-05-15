@@ -181,6 +181,10 @@ class PathFinder:
 
     def _bfs(self, start_pos):
         """BFS寻找已知区域内的最短路径"""
+        
+        if start_pos == self.target_pos:
+            return [start_pos]
+        
         from collections import deque
         if self.target_pos not in self.visited:
             return None  # 终点未被探索过
