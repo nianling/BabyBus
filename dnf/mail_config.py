@@ -14,5 +14,5 @@ config = {
     "smtp_port": 465,  # SSL端口
 
     # 收件人
-    "receiver": "1293249206@qq.com",
+    "receiver": "",
 }
