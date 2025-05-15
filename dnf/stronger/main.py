@@ -464,6 +464,53 @@ def judge_is_target_door(current_room, door_box, hero_box, next_room_direction, 
     return False
 
 
+def minimap_analyse(capturer):
+    # 分析小地图
+    cols, rows = 0, 0
+    cur_row, cur_col = 0, 0
+    map_crop = None
+    boss_room = (-1, -1)
+    current_room = (-1, -1)
+    map_error_cnt = 0
+    analyse_map_error = True
+    while analyse_map_error:
+        try:
+            img0 = capturer.capture()
+
+            # 分析小地图的行列
+            cols = map_util.get_colum_count(img0)
+            rows = map_util.get_row_count(img0)
+            # logger.warning("分析小地图的行列{},{}", rows, cols)
+
+            # 裁剪小地图区域
+            map_crop = map_util.get_small_map_region_img(img0, rows, cols)
+
+            # 获取boss房间位置，0基
+            boss_room = map_util.get_boss_from_crop(map_crop, rows, cols)
+            # logger.info('boss房间是 {}', boss_room)
+            current_room = map_util.current_room_index_cropped(map_crop, rows, cols)  # 实际上没有用，只是打印看一下位置
+            # logger.info('当前房间是 {}', current_room)
+            cur_row, cur_col = current_room
+        except Exception as e:
+            logger.error(e)
+            traceback.print_exc()
+
+        analyse_map_error = boss_room is None or current_room is None or boss_room == (-1, -1) or current_room == (-1, -1)
+        if analyse_map_error:
+            map_error_cnt = map_error_cnt + 1
+            # cv2.imwrite(f'errorDetectMap_init_{map_error_cnt}.jpg', img0)
+            # logger.error(f"分析小地图的行列init，第 {map_error_cnt} 次出错,行列是 {rows} , {cols}")
+            # logger.error("暂停2秒继续重试！！")
+            time.sleep(0.2)
+        else:
+            map_error_cnt = 0
+
+        if analyse_map_error and map_error_cnt > 20:
+            logger.error("分析小地图的行列init多次出错了 废了！！！")
+            return None
+    return boss_room, (rows, cols), current_room
+
+
 # <<<<<<<<<<<<<<<< 方法定义 <<<<<<<<<<<<<<<<
 
 
@@ -581,43 +628,52 @@ def main_script():
 
             pause_event.wait()  # 暂停
 
+            # 检查是否成功进入地图
+            img0 = capturer.capture()
+            enter_map_success = not detect_return_town_button_when_choose_map(img0)
+            # 进不去
+            if not enter_map_success:
+                logger.error(f'第【{i + 1}】【{role.name}】，进不去地图,结束当前角色')
+                time.sleep(0.2)
+                # esc 关闭地图选择界面
+                kbu.do_press(Key.esc)
+                time.sleep(0.2)
+                need_fight = False
+
         # 刷图流程开始>>>>>>>>>>
         logger.warning(f'第【{i + 1}】个角色【{role.name}】已经进入地图,刷图打怪循环开始...')
 
         # 隐藏掉右下角的图标
         if need_fight:
             hide_right_bottom_icon(capturer.capture(), x, y)
-        # 一直循环
-        pause_event.wait()  # 暂停
 
+        # ##############################
         # 记录一下刷图次数
         fight_count = 0
-
         # 角色刷完结束
         finished = False
 
         # todo 循环进图开始>>>>>>>>>>>>>>>>>>>>>>>>
+        # 一直循环
+        pause_event.wait()  # 暂停
         while not finished and need_fight:  # 循环进图
             # 先要等待地图加载 todo 改动态识别
-            time.sleep(4.5)
+            # time.sleep(4.5)
+            pause_event.wait()  # 暂停
+            try:
+                t1 = time.time()
+                time.sleep(0.2)
+                load_map_task = tool_executor.submit(minimap_analyse, capturer)
+                load_map_success = load_map_task.result(timeout=5)
+                if load_map_success:
+                    logger.info(f"地图加载完成！{(time.time() - t1):.2f}s")
+            except Exception as e:
+                logger.error("地图加载任务异常")
+                logger.error(e)
+                traceback.print_exc()
 
             # 不管了,全部释放掉
             mover._release_all_keys()
-
-            pause_event.wait()  # 暂停
-            img0 = capturer.capture()
-
-            # 检查是否成功进入地图
-            enter_map_success = not detect_return_town_button_when_choose_map(img0)
-
-            # 进不去
-            if not enter_map_success:
-                logger.error(f'【{role.name}】，进不去地图,结束当前角色')
-                time.sleep(0.2)
-                # esc 关闭地图选择界面
-                kbu.do_press(Key.esc)
-                time.sleep(0.2)
-                break
 
             pause_event.wait()  # 暂停
 
@@ -731,7 +787,7 @@ def main_script():
                 
                 # 识别
                 cv_det_task = None
-                if boss_appeared or in_boss_room or game_mode == 2:
+                if boss_appeared or in_boss_room or boss_door_appeared or game_mode == 2:
                     cv_det_task = img_executor.submit(object_detection_cv, img0)
                 img4show = img0.copy()
                 # 执行推理
