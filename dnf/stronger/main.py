@@ -819,10 +819,13 @@ def main_script():
                             email_subject = f"{mode_name} {role.name}阵亡通知书"
                             email_content = f"鏖战{mode_name}，角色【{role.name}】不幸阵亡，及时查看处理。"
                             mail_receiver = mail_config.get("receiver")
-                            tool_executor.submit(lambda: (
-                                mail_sender.send_email(email_subject, email_content, mail_receiver),
-                                logger.info("角色死亡 已经发送邮件提醒了")
-                            ))
+                            if mail_receiver:
+                                tool_executor.submit(lambda: (
+                                    mail_sender.send_email(email_subject, email_content, mail_receiver),
+                                    logger.info("角色死亡 已经发送邮件提醒了")
+                                ))
+                            else:
+                                logger.warning("角色死亡 邮件提醒没有配置,跳过")
 
                         logger.warning(f"检测到死了，准备复活")
                         time.sleep(8)  # 拖慢点复活
