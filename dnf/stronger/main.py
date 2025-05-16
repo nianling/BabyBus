@@ -931,26 +931,26 @@ def main_script():
                                 logger.debug("人在上面")
                                 random_direct = random.choice(list(filter(lambda x1: x1 != "UP" and x1 != kbd_current_direction, kbu.single_direct)))
                         else:
-                            logger.debug(f"x轴上位置：{hero_xywh[0]:.2f},{(hero_xywh[0] / img0.shape[1]):.2f}---,current:{mover.get_current_direction()}")
-                            logger.debug(f"y轴上位置：{hero_xywh[1]:.2f},{(hero_xywh[1] / img0.shape[0]):.2f}---,current:{mover.get_current_direction()}")
+                            logger.debug(f"x轴上位置：{hero_xywh[0]:.2f},{(hero_xywh[0] / img0.shape[1]):.2f}---,current:{kbd_current_direction}")
+                            logger.debug(f"y轴上位置：{hero_xywh[1]:.2f},{(hero_xywh[1] / img0.shape[0]):.2f}---,current:{kbd_current_direction}")
 
-                            if hero_xywh[1] < 400 and hero_xywh[0] > 850 and ("UP" in mover.get_current_direction() or "RIGHT" in mover.get_current_direction()):
+                            if hero_xywh[1] < 400 and hero_xywh[0] > 850 and (kbd_current_direction is None or "UP" in kbd_current_direction or "RIGHT" in kbd_current_direction):
                                 logger.warning("人在右边3")
                                 mover.move(target_direction="LEFT")
                                 time.sleep(1.2)
                                 logger.warning("强制向左1秒")
-                            elif hero_xywh[0] > img0.shape[1] * 3 // 4 and (mover.get_current_direction() is None or "RIGHT" in mover.get_current_direction()):
+                            elif hero_xywh[0] > img0.shape[1] * 3 // 4 and (kbd_current_direction is None or "RIGHT" in kbd_current_direction):
                                 logger.warning("人在右边2")
                                 mover.move(target_direction="LEFT")
                                 time.sleep(1.2)
                                 logger.warning("强制向左1秒")
                                 random_direct = random.choice(list(filter(lambda x1: x1 != "RIGHT" and x1 != kbd_current_direction, kbu.single_direct)))
-                            elif hero_xywh[1] < 400 and hero_xywh[0] < 200 and ("UP" in mover.get_current_direction() or "LEFT" in mover.get_current_direction()):
+                            elif hero_xywh[1] < 400 and hero_xywh[0] < 200 and (kbd_current_direction is None or "UP" in kbd_current_direction or "LEFT" in kbd_current_direction):
                                 logger.warning("人在左边3")
                                 mover.move(target_direction="RIGHT")
                                 time.sleep(1.2)
                                 logger.warning("强制向右1秒")
-                            elif hero_xywh[0] < img0.shape[1] * 1 // 5 and (mover.get_current_direction() is None or "LEFT" in mover.get_current_direction()):
+                            elif hero_xywh[0] < img0.shape[1] * 1 // 5 and (kbd_current_direction is None or "LEFT" in kbd_current_direction):
                                 logger.warning("人在左边2")
                                 mover.move(target_direction="RIGHT")
                                 time.sleep(1.2)
@@ -985,10 +985,10 @@ def main_script():
                                             random_direct = random.choice(
                                                 list(filter(lambda x1: x1 != get_opposite_direction(path_stack[-1][1]) and x1 != kbd_current_direction, kbu.single_direct)))
 
-                                        if hero_xywh[1] < 400 and mover.get_current_direction() == "UP" and previous == "RIGHT" and hero_xywh[0] < 630:
+                                        if hero_xywh[1] < 400 and kbd_current_direction == "UP" and previous == "RIGHT" and hero_xywh[0] < 630:
                                             logger.debug("走到底，上小卡处理1。。")
                                             random_direct = random.choice(["RIGHT", "RIGHT_DOWN"])
-                                        elif hero_xywh[1] < 400 and mover.get_current_direction() == "UP" and previous == "LEFT" and hero_xywh[0] > 420:
+                                        elif hero_xywh[1] < 400 and kbd_current_direction == "UP" and previous == "LEFT" and hero_xywh[0] > 420:
                                             logger.debug("走到底，上小卡处理2。。")
                                             random_direct = random.choice(["LEFT", "LEFT_DOWN"])
 
