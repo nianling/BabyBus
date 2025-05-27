@@ -1359,7 +1359,7 @@ def main_script():
                         time.sleep(0.05)
 
                         skill_name = None
-                        if role.powerful_skills and boss_door_appeared:
+                        if role.powerful_skills and (boss_door_appeared or boss_appeared):
                             skill_name = skill_util.suggest_skill_powerful(role, img0)
                         if skill_name is None:
                             # 推荐技能
