@@ -107,3 +107,18 @@ def match_template_with_confidence(image, template, threshold=0.8):
         bottom_right = (pt[0] + template.shape[1], pt[1] + template.shape[0])  # 计算右下角坐标
         matches.append((pt, bottom_right, match_score))  # 将左上角、右下角和置信度添加到结果列表
     return matches
+
+
+def hex_to_bgr(hex_color: str) -> tuple:
+    """
+    将十六进制颜色 转换为 BGR 三元组
+    :param hex_color: #523294
+    :return: (94, 50, 82)
+    """
+
+    # 去除# 并转换为RGB整数
+    r = int(hex_color[1:3], 16)
+    g = int(hex_color[3:5], 16)
+    b = int(hex_color[5:7], 16)
+
+    return b, g, r
