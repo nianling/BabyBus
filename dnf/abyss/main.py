@@ -48,7 +48,8 @@ from dnf.stronger.player import (
     goto_abyss,
     buy_tank_from_mystery_shop,
     buy_bell_from_mystery_shop,
-    buy_shanshanming_from_mystery_shop
+    buy_shanshanming_from_mystery_shop,
+    process_mystery_shop
 )
 from logger_config import logger
 from dnf.stronger.role_list import get_role_config_list
@@ -150,8 +151,9 @@ em_h = 100  # 精英怪高度处理
 door_h = 32  # 门高度处理
 loot_h = 0  # 掉落物高度处理
 
-attack_x = 166  # 打怪命中范围，x轴距离
-attack_y = 40  # 打怪命中范围，y轴距离
+attack_x = 200  # 打怪命中范围，x轴距离
+attack_y = 80  # 打怪命中范围，y轴距离
+
 door_hit_y = 15  # 过门命中范围，y轴距离
 pick_up_x = 25  # 捡材料命中范围，x轴距离
 pick_up_y = 15  # 捡材料命中范围，y轴距离
@@ -415,16 +417,7 @@ def analyse_det_result(results, hero_height, img) -> DetResult:
         return res
 
 
-def process_mystery_shop(img):
-    buy_from_mystery_shop(img, x, y)
-    time.sleep(0.5)
-    buy_tank_from_mystery_shop(img, x, y, buy_tank_type)
-    if buy_bell_ticket:
-        time.sleep(0.5)
-        buy_bell_from_mystery_shop(img, x, y, buy_bell_ticket)
-    if buy_shanshanming:
-        time.sleep(0.5)
-        buy_shanshanming_from_mystery_shop(img, x, y, buy_shanshanming)
+
 
 
 # <<<<<<<<<<<<<<<< 方法定义 <<<<<<<<<<<<<<<<
@@ -466,8 +459,8 @@ def main_script():
         # 等待加载角色完成
         time.sleep(4)
 
-        # 确保展示右下角的图标
-        show_right_bottom_icon(capturer.capture(), x, y)
+        # # 确保展示右下角的图标
+        # show_right_bottom_icon(capturer.capture(), x, y)
 
         logger.info(f'设置的拥有疲劳值: {role.fatigue_all}')
 
@@ -522,9 +515,10 @@ def main_script():
         # 刷图流程开始>>>>>>>>>>
         logger.info(f'第【{i + 1}】个角色【{role.name}】已经进入地图,刷图打怪循环开始...')
 
-        # 隐藏掉右下角的图标
-        if need_fight:
-            hide_right_bottom_icon(capturer.capture(), x, y)
+        # # 隐藏掉右下角的图标
+        # if need_fight:
+        #     hide_right_bottom_icon(capturer.capture(), x, y)
+
         # 一直循环
         pause_event.wait()  # 暂停
 
@@ -710,7 +704,7 @@ def main_script():
                 if hero_xywh:
                     pass
                 else:  # todo 没有识别到角色
-                    if not fight_victory:
+                    if not fight_victory or (monster_xywh_list or boss_xywh_list or ball_xywh_list):
                         random_direct = random.choice(kbu.single_direct)
                         logger.warning('未检测到角色,随机跑个方向看看{}', random_direct)
                         mover.move(target_direction=random_direct)
@@ -722,7 +716,9 @@ def main_script():
                     continue
 
                 # ############################### 判断-准备打怪 ######################################
-                wait_for_attack = hero_xywh and (monster_xywh_list or boss_xywh_list or ball_xywh_list) and not fight_victory
+                wait_for_attack = ((hero_xywh and (monster_xywh_list or boss_xywh_list or ball_xywh_list) and not fight_victory)
+                                   or (hero_xywh and not continue_exist and not forward_exists and (monster_xywh_list or boss_xywh_list or ball_xywh_list))
+                                   )
                 monster_box = None
                 monster_in_range = False
                 role_attack_center = None
@@ -748,33 +744,33 @@ def main_script():
                     if role.attack_center_x:
                         if mover.get_current_direction() is None or "RIGHT" in mover.get_current_direction():
                             monster_in_range = (monster_box[0] > role_attack_center[0]
-                                                and abs(role_attack_center[0] - monster_box[0]) < 330
-                                                and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                and abs(role_attack_center[0] - monster_box[0]) < attack_x
+                                                and abs(role_attack_center[1] - monster_box[1]) < attack_y
                                                 ) or (
                                                        monster_box[0] < role_attack_center[0]
                                                        and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x * 0.65)
-                                                       and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                       and abs(role_attack_center[1] - monster_box[1]) < attack_y
                                                )
                         else:
                             monster_in_range = (monster_box[0] < role_attack_center[0]
-                                                and abs(role_attack_center[0] - monster_box[0]) < 330
-                                                and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                and abs(role_attack_center[0] - monster_box[0]) < attack_x
+                                                and abs(role_attack_center[1] - monster_box[1]) < attack_y
                                                 ) or (
                                                    (monster_box[0] > role_attack_center[0]
                                                     and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x * 0.65)
-                                                    and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                    and abs(role_attack_center[1] - monster_box[1]) < attack_y
                                                     )
                                                )
                     else:
                         if mover.get_current_direction() is None or "RIGHT" in mover.get_current_direction():
                             monster_in_range = (monster_box[0] > role_attack_center[0]
-                                                and abs(role_attack_center[0] - monster_box[0]) < 330
-                                                and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                and abs(role_attack_center[0] - monster_box[0]) < attack_x
+                                                and abs(role_attack_center[1] - monster_box[1]) < attack_y
                                                 )
                         else:
                             monster_in_range = (monster_box[0] < role_attack_center[0]
-                                                and abs(role_attack_center[0] - monster_box[0]) < 330
-                                                and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                and abs(role_attack_center[0] - monster_box[0]) < attack_x
+                                                and abs(role_attack_center[1] - monster_box[1]) < attack_y
                                                 )
 
                     # if fought_boss:
@@ -784,9 +780,10 @@ def main_script():
                         cv2.circle(img4show, (int(hero_xywh[0]), int(hero_xywh[1])), 10, color_yellow, 2)
 
                 # ############################ 判断-准备进入下一个房间 ####################################
-                wait_for_next_room = ((forward_exists or hole_xywh_list)
-                                      and not ball_xywh_list and not monster_xywh_list and not boss_xywh_list
-                                      and not ball_appeared and not fight_victory)
+                wait_for_next_room = (((forward_exists or hole_xywh_list)
+                                       and not ball_xywh_list and not monster_xywh_list and not boss_xywh_list
+                                       and not fight_victory)
+                                      or (not continue_exist and not hole_xywh_list and not ball_xywh_list and not monster_xywh_list and not boss_xywh_list))
                 next_room_direction = 'RIGHT'
 
                 # ####################### 判断-准备拾取材料 #############################################
@@ -981,11 +978,15 @@ def main_script():
                 # 逻辑处理-捡材料>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                 if wait_for_pickup:  # todo 前边都不捡
                     if not collect_loot_pressed:
+                        if hero_xywh[0] > img0.shape[1] * 4 // 5:
+                            logger.debug('太靠右了，先调整一下')
+                            mover.move(target_direction="LEFT")
+                            time.sleep(0.3)
                         logger.warning("预先移动物品到脚下")
                         # 不管了,全部释放掉
                         mover._release_all_keys()
 
-                        time.sleep(0.5)
+                        time.sleep(0.3)
                         logger.warning("预先移动物品到脚下")
                         kbu.do_press(dnf.Key_collect_loot)
                         collect_loot_pressed = True
@@ -1080,8 +1081,9 @@ def main_script():
                     pause_event.wait()
                     # 神秘商店
                     if shop_mystery_exist:
+                        # cv2.imwrite(f'./shop_imgs/mystery_Shop_{datetime.fromtimestamp(time.time()).strftime("%Y%m%d_%H%M%S")}.jpg', img0)
                         time.sleep(0.5)
-                        process_mystery_shop(capturer.capture())  # 重新截图，防止前面截的帧有干扰不清晰
+                        process_mystery_shop(capturer.capture(), x, y, buy_tank_type, buy_bell_ticket, buy_shanshanming)  # 重新截图，防止前面截的帧有干扰不清晰
 
                         pause_event.wait()
                         kbu.do_press(Key.esc)
@@ -1106,7 +1108,12 @@ def main_script():
                     # 聚集物品,按x
                     if (loot_xywh_list or gold_xywh_list) and not collect_loot_pressed:
                         if not collect_loot_pressed:
-                            time.sleep(0.5)
+                            if hero_xywh[0] > img0.shape[1] * 4 // 5:
+                                logger.debug('太靠右了，先调整一下')
+                                mover.move(target_direction="LEFT")
+                                time.sleep(0.3)
+
+                            time.sleep(0.3)
                             logger.warning("中间移动物品到脚下")
                             kbu.do_press(dnf.Key_collect_loot)
                             collect_loot_pressed = True
@@ -1149,9 +1156,13 @@ def main_script():
 
             pause_event.wait()  # 暂停
             if not collect_loot_pressed:
+                # 向左，防止太靠右
+                mover.move(target_direction="LEFT")
+                time.sleep(0.3)
+
                 logger.warning("最后移动物品到脚下")
                 mover._release_all_keys()
-                time.sleep(0.5)
+                time.sleep(0.2)
                 kbu.do_press(dnf.Key_collect_loot)
                 time.sleep(0.1)
                 kbu.do_press(Key.left)
@@ -1216,8 +1227,8 @@ def main_script():
         logger.warning(f'第【{i + 1}】个角色【{role.name}】刷图打怪循环结束...总计耗时: {(time_diff.total_seconds() / 60):.1f} 分钟')
 
         # 刷图流程结束<<<<<<<<<<
-        # 展示掉右下角的图标
-        show_right_bottom_icon(capturer.capture(), x, y)
+        # # 展示掉右下角的图标
+        # show_right_bottom_icon(capturer.capture(), x, y)
 
         pause_event.wait()  # 暂停
         # 如果刷图了,则完成每日任务,整理背包

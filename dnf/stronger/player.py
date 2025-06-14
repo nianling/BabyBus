@@ -3,7 +3,6 @@
 __author__ = "廿陵 <wemean66@gmail.com> (GitHub: @nianling)"
 __version__ = '1.0'
 
-
 import os
 import time
 
@@ -159,6 +158,27 @@ def finish_daily_challenge(x, y, daily1and1=False):
     mu.do_smooth_move_to(x + 494, y + 165)
     time.sleep(0.1)
     mu.do_click(Button.left)
+    time.sleep(0.1)
+    mu.do_click(Button.left)
+    time.sleep(0.1)
+    mu.do_click(Button.left)
+    time.sleep(0.1)
+    # esc关闭畅玩任务
+    kbu.do_press(Key.esc)
+    time.sleep(0.2)
+
+
+def finish_daily_challenge_by_all(x, y, daily1and1=False):
+    """
+    点击每日任务
+    """
+    # 点击畅玩任务，点两次全部领取
+    logger.info('点击畅玩任务,完成每日任务')
+    mu.do_smooth_move_to(x + 767, y + 542)  # 不等比
+    time.sleep(0.1)
+    mu.do_click(Button.left)
+    time.sleep(0.1)
+    mu.do_smooth_move_to(x + 497, y + 504)
     time.sleep(0.1)
     mu.do_click(Button.left)
     time.sleep(0.1)
@@ -810,6 +830,14 @@ def buy_shanshanming_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
         template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
         matches2 = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
         matches = matches1 + matches2
+
+    # 史诗必买
+    template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/shanshanming26-3.png'), cv2.IMREAD_COLOR)
+    template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
+    matches3 = match_template_with_confidence(gray_screenshot, template_again_gray, threshold=0.85)
+    if matches3:
+        logger.info(f"发财了！出现史诗闪闪明{len(matches3)}个！")
+    matches = matches + matches3
     logger.info(f"发现闪闪明{len(matches)}个。{matches}")
 
     for top_left, bottom_right, _ in matches:
@@ -824,3 +852,15 @@ def buy_shanshanming_from_mystery_shop(full_screen, x, y, buy_type: int = 2):
         mu.do_click(Button.left)
         time.sleep(0.2)
         logger.info("购买闪闪明一次")
+
+
+def process_mystery_shop(img, x, y, buy_tank_type, buy_bell_ticket, buy_shanshanming):
+    buy_from_mystery_shop(img, x, y)
+    time.sleep(0.5)
+    buy_tank_from_mystery_shop(img, x, y, buy_tank_type)
+    if buy_bell_ticket:
+        time.sleep(0.5)
+        buy_bell_from_mystery_shop(img, x, y, buy_bell_ticket)
+    if buy_shanshanming:
+        time.sleep(0.5)
+        buy_shanshanming_from_mystery_shop(img, x, y, buy_shanshanming)

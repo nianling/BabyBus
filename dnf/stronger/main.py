@@ -44,7 +44,7 @@ from dnf.stronger.method import (
 )
 from dnf.stronger.player import (
     transfer_materials_to_account_vault,
-    finish_daily_challenge,
+    finish_daily_challenge_by_all,
     teleport_to_sailiya,
     clik_to_quit_game,
     do_ocr_fatigue_retry,
@@ -60,6 +60,7 @@ from dnf.stronger.player import (
     show_right_bottom_icon,
     goto_white_map_level,
     buy_from_mystery_shop,
+    process_mystery_shop
 )
 from logger_config import logger
 from role_list import get_role_config_list
@@ -76,6 +77,7 @@ from utils.utilities import match_template_by_roi
 from utils.mail_sender import EmailSender
 from dnf.mail_config import config as mail_config
 from dnf.stronger.object_detect import object_detection_cv
+from utils.utilities import hex_to_bgr
 
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
@@ -88,6 +90,13 @@ show = False  # 查看检测结果
 quit_game_after_finish = False
 # 睡觉去了,让脚本执行完之后,自己关机
 shutdown_pc_after_finish = False
+
+# 买罐子
+buy_tank_type = 0  # buy_type: 0不买，1买传说，2买史诗，3买史诗+传说
+# 买铃铛
+buy_bell_ticket = 0  # buy_type: 0，不买，1买粉罐子，2买传说罐子，3买粉+传说罐子
+# 买闪闪明
+buy_shanshanming = 2  # buy_type: 0，不买，1买粉罐子，2买传说罐子，3买粉+传说罐子
 
 # 执行脚本的第一个角色_编号
 first_role_no = 1
@@ -150,6 +159,109 @@ names = [
     'sss',
     'door-boss'
 ]
+
+name_colors = [
+  {
+    "name": "boss",
+    "id": 1,
+    "color": "#523294",
+    "type": "rectangle",
+    "attributes": []
+  },
+  {
+    "name": "card",
+    "id": 2,
+    "color": "#5b98c6",
+    "type": "rectangle",
+    "attributes": []
+  },
+  {
+    "name": "continue",
+    "id": 3,
+    "color": "#4c7a1d",
+    "type": "rectangle",
+    "attributes": []
+  },
+  {
+    "name": "door",
+    "id": 4,
+    "color": "#4398ef",
+    "type": "rectangle",
+    "attributes": []
+  },
+  {
+    "name": "gold",
+    "id": 5,
+    "color": "#f2cb53",
+    "type": "rectangle",
+    "attributes": []
+  },
+  {
+    "name": "hero",
+    "id": 6,
+    "color": "#fefe30",
+    "type": "rectangle",
+    "attributes": []
+  },
+  {
+    "name": "loot",
+    "id": 7,
+    "color": "#a8e898",
+    "type": "rectangle",
+    "attributes": []
+  },
+  {
+    "name": "menu",
+    "id": 8,
+    "color": "#268674",
+    "type": "rectangle",
+    "attributes": []
+  },
+  {
+    "name": "monster",
+    "id": 9,
+    "color": "#fcb5fc",
+    "type": "rectangle",
+    "attributes": []
+  },
+  {
+    "name": "elite-monster",
+    "id": 10,
+    "color": "#33ddff",
+    "type": "rectangle",
+    "attributes": []
+  },
+  {
+    "name": "shop",
+    "id": 11,
+    "color": "#c8b3cb",
+    "type": "rectangle",
+    "attributes": []
+  },
+  {
+    "name": "shop-mystery",
+    "id": 12,
+    "color": "#909950",
+    "type": "rectangle",
+    "attributes": []
+  },
+  {
+    "name": "sss",
+    "id": 13,
+    "color": "#b5b5b0",
+    "type": "rectangle",
+    "attributes": []
+  },
+  {
+    "name": "door-boss",
+    "id": 14,
+    "color": "#ea6a4b",
+    "type": "rectangle",
+    "attributes": []
+  }
+]
+name_colors = [hex_to_bgr(d['color']) for d in name_colors]
+
 colors = [[random.randint(0, 255) for _ in range(3)] for _ in range(len(names))]
 # ----------------------------------------------------------
 boss_h = 120  # boss高度处理
@@ -158,10 +270,12 @@ em_h = 100  # 精英怪高度处理
 door_h = 32  # 门高度处理
 loot_h = 0  # 掉落物高度处理
 
-attack_x = 166  # 打怪命中范围，x轴距离
-attack_y = 40  # 打怪命中范围，y轴距离
+attack_x = 300  # 打怪命中范围，x轴距离
+attack_y = 90  # 打怪命中范围，y轴距离
+
 door_hit_x = 25  # 过门命中范围，y轴距离
 door_hit_y = 15  # 过门命中范围，x轴距离
+
 pick_up_x = 25  # 捡材料命中范围，x轴距离
 pick_up_y = 15  # 捡材料命中范围，y轴距离
 
@@ -354,7 +468,9 @@ def analyse_det_result(results, hero_height, img):
             # 在原图上画框
             if show and img is not None:
                 label = '%s %.2f' % (names[int(cls)], conf)
-                plot_one_box(box.xyxy[0], img, label=label, color=colors[int(cls)], line_thickness=2)
+                # plot_one_box(box.xyxy[0], img, label=label, color=colors[int(cls)], line_thickness=2)
+                # plot_one_box(box.xyxy[0], img, label=label, color=hex_to_bgr(name_colors[int(cls)]['color']), line_thickness=2)
+                plot_one_box(box.xyxy[0], img, label=label, color=name_colors[int(cls)], line_thickness=2)
 
         res = DetResult()
         res.monster_xywh_list = monster_xywh_list
@@ -554,8 +670,8 @@ def main_script():
         # 等待加载角色完成
         time.sleep(4)
 
-        # 确保展示右下角的图标
-        show_right_bottom_icon(capturer.capture(), x, y)
+        # # 确保展示右下角的图标
+        # show_right_bottom_icon(capturer.capture(), x, y)
 
         logger.info(f'设置的拥有疲劳值: {role.fatigue_all}')
 
@@ -590,10 +706,10 @@ def main_script():
 
         if need_fight:
             pause_event.wait()  # 暂停
-            # 奶爸刷图,切换输出加点
-            if '奶爸' in role.name:
-                logger.info("是奶爸,准备切换锤子护石...")
-                crusader_to_battle(x, y)
+            # todo 奶爸刷图,切换输出加点
+            # if '奶爸' in role.name:
+            #     logger.info("是奶爸,准备切换加点...")
+            #     crusader_to_battle(x, y)
 
             pause_event.wait()  # 暂停
             # 默认是站在赛丽亚房间
@@ -643,9 +759,9 @@ def main_script():
         # 刷图流程开始>>>>>>>>>>
         logger.warning(f'第【{i + 1}】个角色【{role.name}】已经进入地图,刷图打怪循环开始...')
 
-        # 隐藏掉右下角的图标
-        if need_fight:
-            hide_right_bottom_icon(capturer.capture(), x, y)
+        # # 隐藏掉右下角的图标
+        # if need_fight:
+        #     hide_right_bottom_icon(capturer.capture(), x, y)
 
         # ##############################
         # 记录一下刷图次数
@@ -743,6 +859,7 @@ def main_script():
 
                 if analyse_map_error and map_error_cnt > 20:
                     logger.error("分析小地图的行列init多次出错了 废了！！！")
+                    # cv2.imwrite(f'errorDetectMap_init_{map_error_cnt}.jpg', capturer.capture())
                     break
 
             allow_directions = map_util.get_allow_directions(map_crop, cur_row, cur_col)
@@ -1048,33 +1165,33 @@ def main_script():
                     if role.attack_center_x:
                         if mover.get_current_direction() is None or "RIGHT" in mover.get_current_direction():
                             monster_in_range = (monster_box[0] > role_attack_center[0]
-                                                and abs(role_attack_center[0] - monster_box[0]) < 330
-                                                and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                and abs(role_attack_center[0] - monster_box[0]) < attack_x
+                                                and abs(role_attack_center[1] - monster_box[1]) < attack_y
                                                 ) or (
                                                        monster_box[0] < role_attack_center[0]
                                                        and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x * 0.65)
-                                                       and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                       and abs(role_attack_center[1] - monster_box[1]) < attack_y
                                                )
                         else:
                             monster_in_range = (monster_box[0] < role_attack_center[0]
-                                                and abs(role_attack_center[0] - monster_box[0]) < 330
-                                                and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                and abs(role_attack_center[0] - monster_box[0]) < attack_x
+                                                and abs(role_attack_center[1] - monster_box[1]) < attack_y
                                                 ) or (
                                                    (monster_box[0] > role_attack_center[0]
                                                     and abs(role_attack_center[0] - monster_box[0]) < (role.attack_center_x * 0.65)
-                                                    and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                    and abs(role_attack_center[1] - monster_box[1]) < attack_y
                                                     )
                                                )
                     else:
                         if mover.get_current_direction() is None or "RIGHT" in mover.get_current_direction():
                             monster_in_range = (monster_box[0] > role_attack_center[0]
-                                                and abs(role_attack_center[0] - monster_box[0]) < 330
-                                                and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                and abs(role_attack_center[0] - monster_box[0]) < attack_x
+                                                and abs(role_attack_center[1] - monster_box[1]) < attack_y
                                                 )
                         else:
                             monster_in_range = (monster_box[0] < role_attack_center[0]
-                                                and abs(role_attack_center[0] - monster_box[0]) < 330
-                                                and abs(role_attack_center[1] - monster_box[1]) < 100
+                                                and abs(role_attack_center[0] - monster_box[0]) < attack_x
+                                                and abs(role_attack_center[1] - monster_box[1]) < attack_y
                                                 )
 
                     # if fought_boss:
@@ -1359,7 +1476,7 @@ def main_script():
                         time.sleep(0.05)
 
                         skill_name = None
-                        if role.powerful_skills and (boss_door_appeared or boss_appeared):
+                        if role.powerful_skills and (boss_xywh_list):
                             skill_name = skill_util.suggest_skill_powerful(role, img0)
                         if skill_name is None:
                             # 推荐技能
@@ -1583,8 +1700,9 @@ def main_script():
                     # 如果商店开着,需要esc关闭
                     if shop_mystery_exist or shop_exist:
                         if shop_mystery_exist:
-                            # cv2.imwrite(f'mystery_{time.time()}.png',img0)
-                            buy_from_mystery_shop(img0, x, y)
+                            # cv2.imwrite(f'./shop_imgs/mystery_Shop_{datetime.fromtimestamp(time.time()).strftime("%Y%m%d_%H%M%S")}.jpg', img0)
+                            time.sleep(0.5)
+                            process_mystery_shop(capturer.capture(), x, y, buy_tank_type, buy_bell_ticket, buy_shanshanming)  # 重新截图，防止前面截的帧有干扰不清晰
                             logger.info("神秘商店处理完毕")
                         kbu.do_press(Key.esc)
                         logger.info("商店开着,需要esc关闭")
@@ -1619,9 +1737,11 @@ def main_script():
 
                         # 如果商店开着,需要esc关闭
                     if shop_mystery_exist:
-                        # cv2.imwrite(f'mystery2_{time.time()}.png',img0)
-                        buy_from_mystery_shop(img0, x, y)
-                        logger.info("翻牌时有神秘商店，处理完毕")
+                        # cv2.imwrite(f'./shop_imgs/mystery_Shop_{datetime.fromtimestamp(time.time()).strftime("%Y%m%d_%H%M%S")}.jpg', img0)
+                        time.sleep(0.5)
+                        process_mystery_shop(capturer.capture(), x, y, buy_tank_type, buy_bell_ticket, buy_shanshanming)  # 重新截图，防止前面截的帧有干扰不清晰
+
+                    logger.info("翻牌时有神秘商店，处理完毕")
 
                     if time.time() - card_appear_time > 0.5:
                         if not card_esc_time:
@@ -1797,8 +1917,8 @@ def main_script():
         logger.warning(f'第【{i + 1}】个角色【{role.name}】刷图打怪循环结束...总计耗时: {(time_diff.total_seconds() / 60):.1f} 分钟')
 
         # 刷图流程结束<<<<<<<<<<
-        # 展示掉右下角的图标
-        show_right_bottom_icon(capturer.capture(), x, y)
+        # # 展示掉右下角的图标
+        # show_right_bottom_icon(capturer.capture(), x, y)
 
         pause_event.wait()  # 暂停
         # 如果刷图了,则完成每日任务,整理背包
@@ -1811,7 +1931,7 @@ def main_script():
 
             pause_event.wait()  # 暂停
             # 完成每日任务
-            finish_daily_challenge(x, y, game_mode == 2)
+            finish_daily_challenge_by_all(x, y, game_mode == 2)
 
             # pause_event.wait()  # 暂停
             # # 一键出售装备,给赛丽亚
