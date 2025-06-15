@@ -485,7 +485,7 @@ def main_script():
             # 奶爸刷图,切换输出加点
             if '奶爸' in role.name:
                 logger.info("是奶爸,准备切换锤子护石...")
-                crusader_to_battle(x, y)
+                # crusader_to_battle(x, y)
 
             pause_event.wait()  # 暂停
             # 默认是站在赛丽亚房间
