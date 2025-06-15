@@ -60,7 +60,8 @@ from dnf.stronger.player import (
     show_right_bottom_icon,
     goto_white_map_level,
     buy_from_mystery_shop,
-    process_mystery_shop
+    process_mystery_shop,
+    activity_live
 )
 from logger_config import logger
 from role_list import get_role_config_list
@@ -1940,6 +1941,8 @@ def main_script():
             pause_event.wait()  # 暂停
             # 转移材料到账号金库
             transfer_materials_to_account_vault(x, y)
+            # 垃圾直播活动
+            activity_live(x, y)
 
         pause_event.wait()  # 暂停
         # 准备重新选择角色
