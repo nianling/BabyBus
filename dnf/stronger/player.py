@@ -181,7 +181,9 @@ def finish_daily_challenge_by_all(x, y, daily1and1=False):
     mu.do_smooth_move_to(x + 497, y + 504)
     time.sleep(0.2)
     mu.do_click(Button.left)
-    time.sleep(0.5)
+    time.sleep(0.2)
+    kbu.do_press(Key.space)
+    time.sleep(0.4)
     mu.do_click(Button.left)
     time.sleep(0.2)
     # esc关闭畅玩任务
