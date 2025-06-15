@@ -77,22 +77,22 @@ def transfer_materials_to_account_vault(x, y):
     logger.info('转移材料到账号金库')
     # 点击仓库
     mu.do_smooth_move_to(x + 366, y + 353)
-    time.sleep(0.1)
+    time.sleep(0.2)
     mu.do_click(Button.left)
-    time.sleep(0.1)
+    time.sleep(0.2)
     # 两下tab切换到账号金库
     kbu.do_press(Key.tab)
-    time.sleep(0.1)
+    time.sleep(0.2)
     kbu.do_press(Key.tab)
-    time.sleep(0.1)
+    time.sleep(0.2)
     # 按下a,一键转移物品
     kbu.do_press('a')
-    time.sleep(0.1)
+    time.sleep(0.2)
     # 空格,确定
     kbu.do_press(Key.space)
     time.sleep(1.5)
     kbu.do_press(Key.space)
-    time.sleep(0.1)
+    time.sleep(0.2)
 
     # esc 取消仓库
     kbu.do_press(Key.esc)
@@ -188,7 +188,7 @@ def finish_daily_challenge_by_all(x, y, daily1and1=False):
     time.sleep(0.2)
     # esc关闭畅玩任务
     kbu.do_press(Key.esc)
-    time.sleep(0.2)
+    time.sleep(0.3)
 
 
 def teleport_to_sailiya(x, y):
@@ -866,3 +866,28 @@ def process_mystery_shop(img, x, y, buy_tank_type, buy_bell_ticket, buy_shanshan
     if buy_shanshanming:
         time.sleep(0.5)
         buy_shanshanming_from_mystery_shop(img, x, y, buy_shanshanming)
+
+
+def activity_live(x, y):
+    """
+    垃圾直播活动
+    """
+    logger.info('垃圾活动')
+    time.sleep(0.4)
+    # 点击仓库
+    mu.do_smooth_move_to(x + 843, y + 516)
+    time.sleep(0.2)
+    mu.do_click(Button.left)
+    time.sleep(0.2)
+
+    mu.do_smooth_move_to(x + 304, y + 517)
+    time.sleep(0.2)
+
+    for _ in range(6):
+        mu.do_click(Button.left)
+        time.sleep(1)
+
+    # esc 取消仓库
+    kbu.do_press(Key.esc)
+    time.sleep(0.2)
+
