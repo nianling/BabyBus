@@ -1036,6 +1036,9 @@ def main_script():
                             elif hero_xywh[0] < img0.shape[1] * 1 // 5 and stand_on_door[0] < img0.shape[1] * 1 // 5:
                                 logger.debug("人在左边2")
                                 random_direct = "RIGHT"
+                                if hero_xywh[1] < img0.shape[0] * 3 // 5:
+                                    logger.debug("人在左边2且上边")
+                                    random_direct = random.choice(['RIGHT', 'RIGHT_DOWN', 'RIGHT_DOWN'])
                             elif hero_xywh[0] > img0.shape[1] * 4 // 5:
                                 logger.debug("人在右边")
                                 random_direct = random.choice(list(filter(lambda x1: x1 != "RIGHT" and x1 != kbd_current_direction, kbu.single_direct)))

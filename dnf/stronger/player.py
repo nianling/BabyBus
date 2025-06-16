@@ -880,7 +880,7 @@ def activity_live(x, y):
     mu.do_click(Button.left)
     time.sleep(0.2)
 
-    mu.do_smooth_move_to(x + 304, y + 517)
+    mu.do_smooth_move_to(x + 712, y + 517)
     time.sleep(0.2)
 
     for _ in range(6):
