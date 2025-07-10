@@ -874,8 +874,8 @@ def activity_live(x, y):
     """
     logger.info('垃圾活动')
     time.sleep(0.4)
-    # 点击仓库
-    mu.do_smooth_move_to(x + 843, y + 516)
+    # 活动图标
+    mu.do_smooth_move_to(x + 819, y + 516)
     time.sleep(0.2)
     mu.do_click(Button.left)
     time.sleep(0.2)
@@ -883,7 +883,7 @@ def activity_live(x, y):
     mu.do_smooth_move_to(x + 712, y + 517)
     time.sleep(0.2)
 
-    for _ in range(6):
+    for _ in range(1):
         mu.do_click(Button.left)
         time.sleep(1)
 
