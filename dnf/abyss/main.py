@@ -15,7 +15,6 @@ from datetime import datetime
 import concurrent.futures
 
 import cv2
-import easyocr
 import keyboard as kboard
 import torch
 import winsound
@@ -50,8 +49,10 @@ from dnf.stronger.player import (
     buy_bell_from_mystery_shop,
     buy_shanshanming_from_mystery_shop,
     process_mystery_shop,
-    activity_live
+    activity_live,
+    do_recognize_fatigue
 )
+from dnf.stronger.skill_util import get_skill_initial_images
 from logger_config import logger
 from dnf.stronger.role_list import get_role_config_list
 from utils import keyboard_utils as kbu
@@ -89,6 +90,10 @@ buy_bell_ticket = 2  # buy_type: 0，不买，1买粉罐子，2买传说罐子�
 # 买闪闪明
 buy_shanshanming = 2  # buy_type: 0，不买，1买粉罐子，2买传说罐子，3买粉+传说罐子
 
+# 使用此处统一配置预留的疲劳值
+enable_uniform_pl = False
+uniform_default_fatigue_reserved = 17
+
 weights = os.path.join(config_.project_base_path, 'weights/abyss.04032147.best.pt')  # 模型存放的位置
 # <<<<<<<<<<<<<<<< 运行时相关的参数 <<<<<<<<<<<<<<<<
 
@@ -109,8 +114,7 @@ stop_be_pressed = False
 # 唤醒继续运行
 continue_pressed = False
 
-# 加载模型
-reader = easyocr.Reader(['en'])
+# reader = easyocr.Reader(['en'])
 # 疲劳值识别
 pattern_pl = re.compile(r'\d+/\d+')
 
@@ -418,9 +422,6 @@ def analyse_det_result(results, hero_height, img) -> DetResult:
         return res
 
 
-
-
-
 # <<<<<<<<<<<<<<<< 方法定义 <<<<<<<<<<<<<<<<
 
 
@@ -455,7 +456,11 @@ def main_script():
         oen_role_start_time = datetime.now()
 
         # 读取角色配置
-        h_h = role.height
+        h_h = role.height  # 高度
+        # 读取疲劳值配置
+        if enable_uniform_pl:
+            role.fatigue_reserved = uniform_default_fatigue_reserved
+        skill_images = {}
 
         # 等待加载角色完成
         time.sleep(4)
@@ -465,7 +470,8 @@ def main_script():
 
         logger.info(f'设置的拥有疲劳值: {role.fatigue_all}')
 
-        ocr_fatigue = do_ocr_fatigue_retry(handle, x, y, reader, 5)
+        # ocr_fatigue = do_ocr_fatigue_retry(handle, x, y, reader, 5)
+        ocr_fatigue = do_recognize_fatigue(capturer.capture())
         logger.info(f'识别的拥有疲劳值: {ocr_fatigue}')
         if ocr_fatigue is not None:
             if role.fatigue_all != ocr_fatigue:
@@ -490,6 +496,9 @@ def main_script():
 
             pause_event.wait()  # 暂停
             # 默认是站在赛丽亚房间
+
+            # 获取技能栏截图
+            skill_images = get_skill_initial_images(capturer.capture())
 
             # N 点第一个
             logger.info("传送到风暴门口,选地图...")
@@ -559,7 +568,8 @@ def main_script():
             logger.info(f'{role.name} 刷图,第 {fight_count} 次，开始...')
 
             # 记录疲劳值
-            current_fatigue_ocr = do_ocr_fatigue_retry(handle, x, y, reader, 5)  # 识别疲劳值
+            # current_fatigue_ocr = do_ocr_fatigue_retry(handle, x, y, reader, 5)  # 识别疲劳值
+            current_fatigue_ocr = do_recognize_fatigue(img0)  # 识别疲劳值
             logger.info(f'当前还有疲劳值(识别): {current_fatigue_ocr}')
 
             global continue_pressed
@@ -904,10 +914,12 @@ def main_script():
 
                         skill_name = None
                         if role.powerful_skills and boss_xywh_list:
-                            skill_name = skill_util.suggest_skill_powerful(role, img0)
+                            # skill_name = skill_util.suggest_skill_powerful(role, img0)
+                            skill_name = skill_util.get_available_skill_from_list_by_match(skills=role.powerful_skills, img0=img0, skill_images=skill_images)
                         if skill_name is None:
                             # 推荐技能
-                            skill_name = skill_util.suggest_skill(role, img0)
+                            # skill_name = skill_util.suggest_skill(role, img0)
+                            skill_name = skill_util.suggest_skill_by_img_match(role, img0, skill_images)
                         skill_util.cast_skill(skill_name)
                         # 小等一下 比如等怪死
                         if skill_name == 'x':
@@ -1173,7 +1185,8 @@ def main_script():
 
             pause_event.wait()  # 暂停
             # 疲劳值判断
-            current_fatigue = do_ocr_fatigue_retry(handle, x, y, reader, 5)
+            # current_fatigue = do_ocr_fatigue_retry(handle, x, y, reader, 5)
+            current_fatigue = do_recognize_fatigue(img0)
             if role.fatigue_reserved > 0 and (current_fatigue - fatigue_cost) < role.fatigue_reserved:
                 # 再打一把就疲劳值就不够预留的了
                 logger.info(f'再打一把就疲劳值就不够预留的{role.fatigue_reserved}了')
