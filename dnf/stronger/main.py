@@ -1038,7 +1038,7 @@ def main_script():
                                 random_direct = "RIGHT"
                                 if hero_xywh[1] < img0.shape[0] * 3 // 5:
                                     logger.debug("人在左边2且上边")
-                                    random_direct = random.choice(['RIGHT', 'RIGHT_DOWN', 'RIGHT_DOWN'])
+                                    random_direct = random.choice(['RIGHT', 'RIGHT_DOWN'])
                             elif hero_xywh[0] > img0.shape[1] * 4 // 5:
                                 logger.debug("人在右边")
                                 random_direct = random.choice(list(filter(lambda x1: x1 != "RIGHT" and x1 != kbd_current_direction, kbu.single_direct)))
@@ -1097,6 +1097,9 @@ def main_script():
                                                     if hero_xywh[0] < 100 and door_xywh_list and len(door_xywh_list) == 1 and door_xywh_list[0][0] < 100:
                                                         logger.debug("左侧处理")
                                                         random_direct = random.choice(list(filter(lambda x1: x1 != get_opposite_direction(previous) and x1 != kbd_current_direction and x1 not in ["DOWN", "LEFT"], kbu.single_direct)))
+                                                    elif 882 < hero_xywh[0] < 888 and 300 < hero_xywh[1] < 305 and kbd_current_direction == "DOWN" and previous == "RIGHT":
+                                                        logger.debug("人可能被卡在右上了")
+                                                        random_direct = "LEFT_DOWN"
                                                     else:
                                                         random_direct = random.choice(list(filter(lambda x1: x1 != get_opposite_direction(previous) and x1 != kbd_current_direction, kbu.single_direct)))
                                                     break
