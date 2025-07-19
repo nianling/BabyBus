@@ -17,6 +17,7 @@ class Skill:
     cd: Optional[float] = field(default=0, metadata={"description": "技能CD,秒"})
     recent_use_time: Optional[float] = field(default=0, metadata={"description": "最近使用的时间,秒级时间戳"})
     animation_time: Optional[float] = field(default=0.7, metadata={"description": "技能动作演出时间"})
+    hotkey_cd_command_cast: Optional[bool] = field(default=False, metadata={"description": "使用快捷键判断CD，且使用指令释放技能"})
 
     def __post_init__(self):
         if not self.name and self.hot_key is not None:

@@ -283,6 +283,13 @@ def get_available_skill_from_list_by_match(skills, img0, skill_images):
                     return s
                 else:
                     logger.debug(f'{s}未恢复计算cd,再找')
+            elif s.hotkey_cd_command_cast and s.hot_key and s.command:  # 需要用快捷键识别CD，但是又需要多个指令操作的情况
+                sname = s.hot_key
+                if check_one_skill_cd(sname, img0, skill_images):
+                    logger.debug(f"Skill:【{s.name}】 已恢复cd(识别指令)")
+                    return s
+                else:
+                    logger.debug(f'{s}未恢复识别cd,再找')
             elif len(s.command) == 1 or s.hot_key is not None:
                 sname = s.hot_key if s.hot_key is not None else s.command[0]
                 if check_one_skill_cd(sname, img0, skill_images):
