@@ -1277,6 +1277,14 @@ def main_script():
             time.sleep(0.2)
         else:
             logger.warning("已经刷完最后一个角色了，结束脚本")
+            email_subject = f"深渊 任务执行结束"
+            email_content = email_subject
+            mail_receiver = mail_config.get("receiver")
+            if mail_receiver:
+                tool_executor.submit(lambda: (
+                    mail_sender.send_email(email_subject, email_content, mail_receiver),
+                    logger.info("任务执行结束")
+                ))
             break
 
 

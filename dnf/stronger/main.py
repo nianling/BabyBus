@@ -1979,6 +1979,21 @@ def main_script():
             time.sleep(0.2)
         else:
             logger.warning("已经刷完最后一个角色了，结束脚本")
+            mode_name = (
+                "白图" if game_mode == 1 else
+                "每日1+1" if game_mode == 2 else
+                "妖气追踪" if game_mode == 3 else
+                "妖怪歼灭" if game_mode == 4 else
+                "未知模式"
+            )
+            email_subject = f"{mode_name} 任务执行结束"
+            email_content = email_subject
+            mail_receiver = mail_config.get("receiver")
+            if mail_receiver:
+                tool_executor.submit(lambda: (
+                    mail_sender.send_email(email_subject, email_content, mail_receiver),
+                    logger.info("任务执行结束")
+                ))
             break
 
 
