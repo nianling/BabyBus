@@ -21,7 +21,12 @@ from logger_config import logger
 from utils import keyboard_utils as kbu
 from utils import mouse_utils as mu
 from utils import window_utils as window_utils
-from utils.utilities import match_template, compare_images, match_template_one, match_template_with_confidence
+from utils.utilities import (
+    match_template, compare_images,
+    match_template_one,
+    match_template_with_confidence,
+    match_template_one_with_conf
+)
 
 reader = None
 
@@ -336,6 +341,80 @@ def do_ocr_fatigue(handle, x, y, model):
         return int(fatigue)
     logger.error("识别疲劳值为空!")
     return None
+
+
+# 提前先加载疲劳数字
+pl_num_images = {}
+for i in range(10):
+    pl_i = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/img_pl/{i}.png'), cv2.IMREAD_COLOR)
+    pl_i = cv2.cvtColor(pl_i, cv2.COLOR_BGR2GRAY)
+    pl_num_images[i] = pl_i
+
+
+def do_recognize_fatigue(img):
+    """
+    识别疲劳值
+    :param img:
+    :return:
+    """
+    # 5*5 *3
+    x1, y1, x2, y2 = 842, 592, 856+1, 596+1
+    fatigue_region = img[y1:y2, x1:x2]
+
+    # cv2.imwrite('./fatigue_region.png', fatigue_region)
+    # cv2.imshow("fatigue_region", fatigue_region)
+    # cv2.waitKey(0)
+
+    fatigue_region = cv2.cvtColor(fatigue_region, cv2.COLOR_BGR2GRAY)
+
+    # 百位 十位 个位
+    hundreds_place_region = fatigue_region[:, :int(fatigue_region.shape[1] / 3)]
+    tens_place_region = fatigue_region[:, int(fatigue_region.shape[1] / 3):int(fatigue_region.shape[1] * 2 / 3)]
+    ones_place_region = fatigue_region[:, int(fatigue_region.shape[1] * 2 / 3):]
+
+    pl_hundreds = 0
+    pl_tens = 0
+    pl_ones = 0
+
+    for i in pl_num_images.keys():
+        # logger.debug(f"匹配数字->:{i}")
+        result = match_template_one_with_conf(ones_place_region, pl_num_images[i], 0.95)
+        if len(result) > 0:
+            # logger.debug(f"百位 匹配到->:{i},---->{result[0]}")
+            pl_ones = i
+
+        result = match_template_one_with_conf(tens_place_region, pl_num_images[i], 0.95)
+        if len(result) > 0:
+            # logger.debug(f"十位 匹配到->:{i},---->{result[0]}")
+            pl_tens = i
+        result = match_template_one_with_conf(hundreds_place_region, pl_num_images[i], 0.95)
+        if len(result) > 0:
+            # logger.debug(f"个位 匹配到->:{i},---->{result[0]}")
+            pl_hundreds = i
+
+    pl_result = pl_hundreds * 100 + pl_tens * 10 + pl_ones
+    logger.debug(f"识别疲劳值-->:{pl_result}")
+    return pl_result
+
+
+if __name__ == '__main__':
+    img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-222758.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-223839.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-223950.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-224414.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-224426.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-224700.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-005935.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010108.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010155.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010242.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010318.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010422.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010458.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010532.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010548.png')
+
+    do_recognize_fatigue(img)
 
 
 def do_ocr_fatigue_retry(handle, x, y, model, retry=1, default_fatigue=10):

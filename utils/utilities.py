@@ -74,6 +74,22 @@ def match_template_one(image, template, threshold=0.8):
         return []
 
 
+def match_template_one_with_conf(image, template, threshold=0.8):
+    """
+    模板匹配,返回置信度最高的一个
+    """
+    result = cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    # print('置信度-->',max_val)
+
+    if max_val >= threshold:
+        pt = max_loc
+        bottom_right = (pt[0] + template.shape[1], pt[1] + template.shape[0])
+        return [(pt, bottom_right, max_val)]
+    else:
+        return []
+
+
 def compare_images(img1, img2):
     # print('img1的尺寸',img1.shape)
     # print('img2的尺寸',img2.shape)
