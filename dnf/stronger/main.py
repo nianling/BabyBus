@@ -1938,7 +1938,8 @@ def main_script():
 
             pause_event.wait()  # 暂停
             # 完成每日任务
-            finish_daily_challenge_by_all(x, y, game_mode == 2)
+            if game_mode == 2:
+                finish_daily_challenge_by_all(x, y, game_mode == 2)
 
             # pause_event.wait()  # 暂停
             # # 一键出售装备,给赛丽亚
