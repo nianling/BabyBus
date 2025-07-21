@@ -317,7 +317,7 @@ def cast_skill(s):
     elif isinstance(s, Skill):
         if s.cd:
             s.recent_use_time = time.time()  # 更新最近使用时间
-        if s.hot_key:
+        if s.hot_key and not s.hotkey_cd_command_cast:
             kbu.do_press(s.hot_key)
         elif s.command:
             if s.concurrent:
