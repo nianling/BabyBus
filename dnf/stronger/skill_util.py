@@ -3,6 +3,7 @@
 __author__ = "廿陵 <wemean66@gmail.com> (GitHub: @nianling)"
 __version__ = '1.0'
 
+import random
 from datetime import datetime
 import time
 
@@ -221,6 +222,17 @@ def suggest_skill_by_img_match(role: RoleConfig, img0, skill_images):
     if ok_skill:
         return ok_skill
     logger.debug("查找技能 没有合适的!!!")
+
+    # 候选
+    if role.candidate_hotkeys:
+        for _ in range(len(role.candidate_hotkeys)):
+            candidate_skill_name = random.choice(role.candidate_hotkeys)
+            if candidate_skill_name == 'x':
+                skill_name = candidate_skill_name
+                break
+            if check_one_skill_cd(candidate_skill_name, img0, skill_images):
+                skill_name = candidate_skill_name
+                break
     return skill_name
 
 
