@@ -954,7 +954,7 @@ def activity_live(x, y):
     logger.info('垃圾活动')
     time.sleep(0.4)
     # 活动图标
-    mu.do_smooth_move_to(x + 819, y + 516)
+    mu.do_smooth_move_to(x + 843, y + 516)
     time.sleep(0.2)
     mu.do_click(Button.left)
     time.sleep(0.2)
