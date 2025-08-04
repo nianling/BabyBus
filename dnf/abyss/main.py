@@ -840,6 +840,8 @@ def main_script():
                     # 要进洞
                     if hole_xywh_list:
                         door_box = hole_xywh_list[0]
+                        door_box[1] += random.choice([0, 10, -10])  # 随机修改一下y,有时候一直进不去
+
                         # 已经确定目标门,移动到目标位置
                         # 目标在角色的右上方
                         if door_box[1] - hero_xywh[1] < 0 and door_box[0] - hero_xywh[0] > 0:
