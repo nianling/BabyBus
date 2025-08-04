@@ -51,7 +51,8 @@ from dnf.stronger.player import (
     process_mystery_shop,
     activity_live,
     do_recognize_fatigue,
-    receive_mail, match_and_click
+    receive_mail, match_and_click,
+    close_new_day_dialog
 )
 from dnf.stronger.skill_util import get_skill_initial_images
 from logger_config import logger
@@ -443,6 +444,10 @@ def main_script():
     logger.info("读取角色配置列表...")
     logger.info(f"共有{len(role_list)}个角色...")
 
+    pause_event.wait()
+    # 检查每日弹窗
+    close_new_day_dialog(handle, x, y)
+
     pause_event.wait()  # 暂停
     # 遍历角色, 循环刷图
     for i in range(len(role_list)):
@@ -468,6 +473,10 @@ def main_script():
 
         # # 确保展示右下角的图标
         # show_right_bottom_icon(capturer.capture(), x, y)
+
+        # 检查每日弹窗
+        if datetime.now().hour == 0:
+            close_new_day_dialog(handle, x, y)
 
         logger.info(f'设置的拥有疲劳值: {role.fatigue_all}')
 
@@ -1251,6 +1260,10 @@ def main_script():
         # 如果刷图了,则完成每日任务,整理背包
         if fight_count > 0:
             logger.info('刷了图之后,进行整理....')
+            # 检查每日弹窗
+            if datetime.now().hour == 0:
+                close_new_day_dialog(handle, x, y)
+
             pause_event.wait()  # 暂停
             # 瞬移到赛丽亚房间
             teleport_to_sailiya(x, y)

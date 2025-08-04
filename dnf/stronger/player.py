@@ -217,25 +217,28 @@ def match_and_click(img_full_color, x, y, template_gray, default_position, thres
     """
     匹配,移动鼠标到目标位置，点击一下
     """
+    matched = False
     try:
         gray_screenshot = cv2.cvtColor(img_full_color, cv2.COLOR_BGRA2GRAY)
         matches = match_template(gray_screenshot, template_gray, threshold=threshold)
-        top_left, bottom_right = matches[0]
-        x1, y1 = top_left
-        x2, y2 = bottom_right
-        center_x = int((x1 + x2) / 2)
-        center_y = int((y1 + y2) / 2)
-        mu.do_move_to(x + center_x, y + center_y)
-        time.sleep(0.3)
-        mu.do_click(Button.left)
-        time.sleep(0.3)
+        if len(matches) > 0:
+            matched = True
+            top_left, bottom_right = matches[0]
+            x1, y1 = top_left
+            x2, y2 = bottom_right
+            center_x = int((x1 + x2) / 2)
+            center_y = int((y1 + y2) / 2)
+            mu.do_move_to(x + center_x, y + center_y)
+            time.sleep(0.3)
+            mu.do_click(Button.left)
     except Exception as e:
         logger.error(e)
         if default_position:
             mu.do_move_to(x + default_position[0], y + default_position[1])
             time.sleep(0.3)
             mu.do_click(Button.left)
-            time.sleep(0.3)
+    time.sleep(0.3)
+    return matched
 
 
 def clik_to_quit_game(handle, x, y):
@@ -411,26 +414,6 @@ def do_recognize_fatigue(img):
     return pl_result
 
 
-if __name__ == '__main__':
-    img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-222758.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-223839.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-223950.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-224414.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-224426.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-224700.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-005935.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010108.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010155.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010242.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010318.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010422.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010458.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010532.png')
-    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010548.png')
-
-    do_recognize_fatigue(img)
-
-
 def do_ocr_fatigue_retry(handle, x, y, model, retry=1, default_fatigue=10):
     """
     允许重试的疲劳值获取
@@ -442,12 +425,12 @@ def do_ocr_fatigue_retry(handle, x, y, model, retry=1, default_fatigue=10):
     :param default_fatigue:
     :return:
     """
-    for attempt in range(retry):
-        result = do_ocr_fatigue(handle, x, y, model)  # todo
-        if result is not None:
-            return result
-        else:
-            logger.warning(f"第{attempt + 1}次识别疲劳值失败,重试中...")
+    # for attempt in range(retry):
+    #     result = do_ocr_fatigue(handle, x, y, model)  # todo
+    #     if result is not None:
+    #         return result
+    #     else:
+    #         logger.warning(f"第{attempt + 1}次识别疲劳值失败,重试中...")
     logger.warning(f"识别疲劳值失败...")
     return default_fatigue
 
@@ -992,24 +975,67 @@ def receive_mail(img, x, y):
     """
     领取邮件
     """
-    logger.info('准备领取邮件')
-    # 874,272 890,282
-    mail_img = img[272:283, 874:891]
-    gray = cv2.cvtColor(mail_img, cv2.COLOR_BGR2GRAY)
-    similarity_score = ssim(template_mail, gray)
-    # logger.info(f'score:【{similarity_score}】')
-    if similarity_score > 0.9:
-        logger.info('有邮件')
-        mu.do_move_to(x + 885, y + 329)
+    try:
+        logger.info('准备领取邮件')
+        # 874,272 890,282
+        mail_img = img[272:283, 874:891]
+        gray = cv2.cvtColor(mail_img, cv2.COLOR_BGR2GRAY)
+        similarity_score = ssim(template_mail, gray)
+        # logger.info(f'score:【{similarity_score}】')
+        if similarity_score > 0.9:
+            logger.info('有邮件')
+            mu.do_move_to(x + 885, y + 329)
+            time.sleep(0.2)
+            mu.do_click(Button.left)
+            time.sleep(1)
+            mu.do_move_to(x + 414, y + 458)
+            time.sleep(0.2)
+            mu.do_click(Button.left)
+            time.sleep(2)
+            logger.info('领取邮件完毕')
+        else:
+            logger.info('没有邮件')
         time.sleep(0.2)
-        mu.do_click(Button.left)
-        time.sleep(1)
-        mu.do_move_to(x + 414, y + 458)
-        time.sleep(0.2)
-        mu.do_click(Button.left)
-        time.sleep(2)
-        logger.info('领取邮件完毕')
-    else:
-        logger.info('没有邮件')
-    time.sleep(0.2)
-    kbu.do_press(Key.esc)
+        kbu.do_press(Key.esc)
+    except Exception as e:
+        logger.error('领邮件出错', e)
+
+
+def close_new_day_dialog(handle, x, y):
+    """
+    关闭0点弹窗
+    检测时机：脚本开始，换角色，出图后，
+    :return:
+    """
+    full_screen = window_utils.capture_window_BGRX(handle)
+    template_btn_close = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/dialog-btn-close.png'), cv2.IMREAD_GRAYSCALE)
+    matched1 = match_and_click(full_screen, x, y, template_btn_close, None)
+    if matched1:
+        logger.info("关闭对话框了")
+
+    if not matched1:
+        logger.info("准备关闭对话框x")
+        full_screen = window_utils.capture_window_BGRX(handle)
+        template_btn_x = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/dialog-btn-X.png'), cv2.IMREAD_GRAYSCALE)
+        match_and_click(full_screen, x, y, template_btn_x, None)
+
+
+if __name__ == '__main__':
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-222758.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-223839.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-223950.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-224414.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-224426.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-224700.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-005935.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010108.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010155.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010242.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010318.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010422.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010458.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010532.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010548.png')
+
+    # do_recognize_fatigue(img)
+    close_new_day_dialog(1, 1, 1)

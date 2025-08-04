@@ -62,7 +62,8 @@ from dnf.stronger.player import (
     process_mystery_shop,
     activity_live,
     do_recognize_fatigue,
-    receive_mail, match_and_click
+    receive_mail, match_and_click,
+    close_new_day_dialog
 )
 from logger_config import logger
 from role_list import get_role_config_list
@@ -654,6 +655,10 @@ def main_script():
     logger.info("读取角色配置列表...")
     logger.info(f"共有{len(role_list)}个角色...")
 
+    pause_event.wait()
+    # 检查每日弹窗
+    close_new_day_dialog(handle, x, y)
+
     pause_event.wait()  # 暂停
     # 遍历角色, 循环刷图
     for i in range(len(role_list)):
@@ -680,6 +685,10 @@ def main_script():
 
         # 等待加载角色完成
         time.sleep(4)
+
+        # 检查每日弹窗
+        if datetime.now().hour == 0:
+            close_new_day_dialog(handle, x, y)
 
         # # 确保展示右下角的图标
         # show_right_bottom_icon(capturer.capture(), x, y)
@@ -793,7 +802,7 @@ def main_script():
             pause_event.wait()  # 暂停
             try:
                 t1 = time.time()
-                time.sleep(0.2)
+                time.sleep(0.5)
                 load_map_task = tool_executor.submit(minimap_analyse, capturer)
                 load_map_success = load_map_task.result(timeout=5)
                 if load_map_success:
@@ -1949,6 +1958,10 @@ def main_script():
         # 如果刷图了,则完成每日任务,整理背包
         if fight_count > 0:
             logger.info('刷了图之后,进行整理....')
+            # 检查每日弹窗
+            if datetime.now().hour == 0:
+                close_new_day_dialog(handle, x, y)
+
             pause_event.wait()  # 暂停
 
             # 瞬移到赛丽亚房间
@@ -1956,7 +1969,7 @@ def main_script():
 
             pause_event.wait()  # 暂停
             # 完成每日任务
-            if game_mode == 2:
+            if game_mode == 2 or ((game_mode == 3 or game_mode == 1) and i < 20):
                 finish_daily_challenge_by_all(x, y, game_mode == 2)
 
             # pause_event.wait()  # 暂停
