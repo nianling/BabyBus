@@ -12,6 +12,7 @@ import numpy as np
 from pynput.keyboard import Key
 from pynput.mouse import Button
 from pathlib import Path
+from skimage.metrics import structural_similarity as ssim
 
 import config as config_
 from dnf.stronger.method import (
@@ -212,6 +213,31 @@ def teleport_to_sailiya(x, y):
     kbu.do_press_with_time(Key.down, 140, 200)
 
 
+def match_and_click(img_full_color, x, y, template_gray, default_position, threshold=0.9):
+    """
+    匹配,移动鼠标到目标位置，点击一下
+    """
+    try:
+        gray_screenshot = cv2.cvtColor(img_full_color, cv2.COLOR_BGRA2GRAY)
+        matches = match_template(gray_screenshot, template_gray, threshold=threshold)
+        top_left, bottom_right = matches[0]
+        x1, y1 = top_left
+        x2, y2 = bottom_right
+        center_x = int((x1 + x2) / 2)
+        center_y = int((y1 + y2) / 2)
+        mu.do_move_to(x + center_x, y + center_y)
+        time.sleep(0.3)
+        mu.do_click(Button.left)
+        time.sleep(0.3)
+    except Exception as e:
+        logger.error(e)
+        if default_position:
+            mu.do_move_to(x + default_position[0], y + default_position[1])
+            time.sleep(0.3)
+            mu.do_click(Button.left)
+            time.sleep(0.3)
+
+
 def clik_to_quit_game(handle, x, y):
     """
     结束游戏
@@ -222,25 +248,13 @@ def clik_to_quit_game(handle, x, y):
     kbu.do_press(Key.esc)
     time.sleep(0.5)
 
-    mu.do_smooth_move_to(x + 679, y + 497)
-    time.sleep(0.3)
-    mu.do_click(Button.left)
-    time.sleep(0.3)
+    full_screen = window_utils.capture_window_BGRX(handle)
+    template_quit_game = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/quit_game1.png'), cv2.IMREAD_GRAYSCALE)
+    match_and_click(full_screen, x, y, template_quit_game, (679, 497))
 
     full_screen = window_utils.capture_window_BGRX(handle)
-    gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
-    template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/quit_game.png'), cv2.IMREAD_COLOR)
-    template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
-    matches = match_template(gray_screenshot, template_again_gray, threshold=0.9)
-    top_left, bottom_right = matches[0]
-    x1, y1 = top_left
-    x2, y2 = bottom_right
-    center_x = int((x1 + x2) / 2)
-    center_y = int((y1 + y2) / 2)
-    mu.do_move_to(x + center_x, y + center_y)
-    time.sleep(0.3)
-    mu.do_click(Button.left)
-    time.sleep(0.3)
+    template_again_gray = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/quit_game.png'), cv2.IMREAD_GRAYSCALE)
+    match_and_click(full_screen, x, y, template_again_gray, None)
 
 
 # todo todo 截好图传参(先移动鼠标,)，判断图片
@@ -358,7 +372,7 @@ def do_recognize_fatigue(img):
     :return:
     """
     # 5*5 *3
-    x1, y1, x2, y2 = 842, 592, 856+1, 596+1
+    x1, y1, x2, y2 = 842, 592, 856 + 1, 596 + 1
     fatigue_region = img[y1:y2, x1:x2]
 
     # cv2.imwrite('./fatigue_region.png', fatigue_region)
@@ -970,3 +984,32 @@ def activity_live(x, y):
     kbu.do_press(Key.esc)
     time.sleep(0.2)
 
+
+template_mail = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/mail.png'), cv2.IMREAD_GRAYSCALE)
+
+
+def receive_mail(img, x, y):
+    """
+    领取邮件
+    """
+    logger.info('准备领取邮件')
+    # 874,272 890,282
+    mail_img = img[272:283, 874:891]
+    gray = cv2.cvtColor(mail_img, cv2.COLOR_BGR2GRAY)
+    similarity_score = ssim(template_mail, gray)
+    # logger.info(f'score:【{similarity_score}】')
+    if similarity_score > 0.9:
+        logger.info('有邮件')
+        mu.do_move_to(x + 885, y + 329)
+        time.sleep(0.2)
+        mu.do_click(Button.left)
+        time.sleep(1)
+        mu.do_move_to(x + 414, y + 458)
+        time.sleep(0.2)
+        mu.do_click(Button.left)
+        time.sleep(2)
+        logger.info('领取邮件完毕')
+    else:
+        logger.info('没有邮件')
+    time.sleep(0.2)
+    kbu.do_press(Key.esc)

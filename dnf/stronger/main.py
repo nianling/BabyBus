@@ -61,7 +61,8 @@ from dnf.stronger.player import (
     buy_from_mystery_shop,
     process_mystery_shop,
     activity_live,
-    do_recognize_fatigue
+    do_recognize_fatigue,
+    receive_mail, match_and_click
 )
 from logger_config import logger
 from role_list import get_role_config_list
@@ -1967,6 +1968,10 @@ def main_script():
             transfer_materials_to_account_vault(x, y)
             # 垃圾直播活动
             activity_live(x, y)
+            # 收邮件
+            if datetime.now().weekday() == 2:
+                logger.info('收邮件')
+                receive_mail(capturer.capture(), x, y)
 
         pause_event.wait()  # 暂停
         # 准备重新选择角色
@@ -1983,10 +1988,9 @@ def main_script():
 
             pause_event.wait()  # 暂停
             # 鼠标移动到选择角色，点击 偏移量（1038,914）
-            # mu.do_smooth_move_to(x + 607, y + 576)
-            mu.do_smooth_move_to(x + 506, y + 504)
-            time.sleep(0.2)
-            mu.do_click(Button.left)
+            img_menu = capturer.capture()
+            template_choose_role = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/choose_role.png'), cv2.IMREAD_GRAYSCALE)
+            match_and_click(img_menu, x, y, template_choose_role, (506, 504))
             # 等待加载角色选择页面
             time.sleep(5)
 
