@@ -7,7 +7,7 @@ import os
 import time
 
 import cv2
-import easyocr
+# import easyocr
 import numpy as np
 from pynput.keyboard import Key
 from pynput.mouse import Button
@@ -257,104 +257,104 @@ def clik_to_quit_game(handle, x, y):
     match_and_click(full_screen, x, y, template_again_gray, None)
 
 
-# todo todo 截好图传参(先移动鼠标,)，判断图片
-def do_ocr_fatigue(handle, x, y, model):
-    """
-    easyocr，识别疲劳值
-    :param model:
-    :param handle:
-    :param x:
-    :param y:
-    :return:
-    """
-    # mu.do_smooth_move_to(x + 1038, y + 713)
-    # mu.do_smooth_move_to(x + 865, y + 594)
-    mu.do_smooth_move_to(x + 875, y + 594)
-    time.sleep(0.2)
-    # img_fatigue = window_utils.capture_window_BGRX(handle, (985, 689, 92, 17))
-    # img_fatigue = window_utils.capture_window_BGRX(handle, (976, 687, 111, 18)) # 整体部分 976, 687 1087 705
-    # img_fatigue = window_utils.capture_window_BGRX(handle, (1032, 687, 55, 18))  # 数值部分
-    # img_fatigue = window_utils.capture_window_BGRX(handle, (1035, 687, 52, 18))  # 数值部分
-    img_fatigue = window_utils.capture_window_BGRX(handle, (880, 574, 43, 13))  # 数值部分
-
-    # 放大图像
-    resize = cv2.resize(img_fatigue, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
-
-    # 转换为灰度图
-    gray = cv2.cvtColor(resize, cv2.COLOR_BGRA2GRAY)
-
-    # 二值化
-    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    # 去噪
-    denoised = cv2.medianBlur(thresh, 3)
-
-    # 边缘增强
-    kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
-    sharpened = cv2.filter2D(denoised, -1, kernel)
-
-    # # 膨胀和腐蚀
-    # kernel = np.ones((2, 2), np.uint8)
-    # dilated = cv2.dilate(sharpened, kernel, iterations=1)
-    # eroded = cv2.erode(dilated, kernel, iterations=1)
-
-    # # 对比度调整
-    # adjusted = cv2.convertScaleAbs(eroded, alpha=1.5, beta=0)
-
-    # cv2.imshow('img_fatigue', img_fatigue)
-    # cv2.imwrite('./img_fatigue.png', img_fatigue)
-    #
-    # cv2.imshow('resize', resize)
-    # cv2.imwrite('./resize.png', resize)
-    #
-    # cv2.imshow('gray', gray)
-    # cv2.imwrite('./gray.png', gray)
-    #
-    # cv2.imshow('thresh', thresh)
-    # cv2.imwrite('./thresh.png', thresh)
-    #
-    # cv2.imshow('denoised', denoised)
-    # cv2.imwrite('./denoised.png', denoised)
-    #
-    # cv2.imshow('sharpened', sharpened)
-    # cv2.imwrite('./sharpened.png', sharpened)
-
-    # cv2.imshow('eroded', eroded)
-    # cv2.imshow('adjusted', adjusted)
-
-    # cv2.waitKey(0)
-    global reader
-
-    if reader is None:
-        if model is not None:
-            reader = model
-        else:
-            reader = easyocr.Reader(['en'])
-
-    result = reader.readtext(sharpened, allowlist="0123456789/", detail=0)
-    logger.debug('识别文本:{}', result)
-
-    mu.do_smooth_move_to(x + 1027, y + 561)
-
-    # 解析结果并提取匹配模式的文本
-    for detection in result:
-        # logger.debug('---------->', detection)
-        # text = detection
-        # if pattern_pl.search(text):
-        #     matched_text = pattern_pl.search(text).group()
-        #     logger.debug(f"识别疲劳值->:{matched_text}")
-        #     parts = matched_text.split("/")
-        #     return int(parts[0])
-        fatigue = extract_fatigue_number(detection)
-        if fatigue is not None:
-            logger.debug(f"识别疲劳值1->:{fatigue}")
-            return fatigue
-    if len(result) > 0:
-        fatigue = result[0].strip()
-        logger.debug(f"识别疲劳值2->:{fatigue}")
-        return int(fatigue)
-    logger.error("识别疲劳值为空!")
-    return None
+# # todo todo 截好图传参(先移动鼠标,)，判断图片
+# def do_ocr_fatigue(handle, x, y, model):
+#     """
+#     easyocr，识别疲劳值
+#     :param model:
+#     :param handle:
+#     :param x:
+#     :param y:
+#     :return:
+#     """
+#     # mu.do_smooth_move_to(x + 1038, y + 713)
+#     # mu.do_smooth_move_to(x + 865, y + 594)
+#     mu.do_smooth_move_to(x + 875, y + 594)
+#     time.sleep(0.2)
+#     # img_fatigue = window_utils.capture_window_BGRX(handle, (985, 689, 92, 17))
+#     # img_fatigue = window_utils.capture_window_BGRX(handle, (976, 687, 111, 18)) # 整体部分 976, 687 1087 705
+#     # img_fatigue = window_utils.capture_window_BGRX(handle, (1032, 687, 55, 18))  # 数值部分
+#     # img_fatigue = window_utils.capture_window_BGRX(handle, (1035, 687, 52, 18))  # 数值部分
+#     img_fatigue = window_utils.capture_window_BGRX(handle, (880, 574, 43, 13))  # 数值部分
+#
+#     # 放大图像
+#     resize = cv2.resize(img_fatigue, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
+#
+#     # 转换为灰度图
+#     gray = cv2.cvtColor(resize, cv2.COLOR_BGRA2GRAY)
+#
+#     # 二值化
+#     _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+#
+#     # 去噪
+#     denoised = cv2.medianBlur(thresh, 3)
+#
+#     # 边缘增强
+#     kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
+#     sharpened = cv2.filter2D(denoised, -1, kernel)
+#
+#     # # 膨胀和腐蚀
+#     # kernel = np.ones((2, 2), np.uint8)
+#     # dilated = cv2.dilate(sharpened, kernel, iterations=1)
+#     # eroded = cv2.erode(dilated, kernel, iterations=1)
+#
+#     # # 对比度调整
+#     # adjusted = cv2.convertScaleAbs(eroded, alpha=1.5, beta=0)
+#
+#     # cv2.imshow('img_fatigue', img_fatigue)
+#     # cv2.imwrite('./img_fatigue.png', img_fatigue)
+#     #
+#     # cv2.imshow('resize', resize)
+#     # cv2.imwrite('./resize.png', resize)
+#     #
+#     # cv2.imshow('gray', gray)
+#     # cv2.imwrite('./gray.png', gray)
+#     #
+#     # cv2.imshow('thresh', thresh)
+#     # cv2.imwrite('./thresh.png', thresh)
+#     #
+#     # cv2.imshow('denoised', denoised)
+#     # cv2.imwrite('./denoised.png', denoised)
+#     #
+#     # cv2.imshow('sharpened', sharpened)
+#     # cv2.imwrite('./sharpened.png', sharpened)
+#
+#     # cv2.imshow('eroded', eroded)
+#     # cv2.imshow('adjusted', adjusted)
+#
+#     # cv2.waitKey(0)
+#     global reader
+#
+#     if reader is None:
+#         if model is not None:
+#             reader = model
+#         else:
+#             reader = easyocr.Reader(['en'])
+#
+#     result = reader.readtext(sharpened, allowlist="0123456789/", detail=0)
+#     logger.debug('识别文本:{}', result)
+#
+#     mu.do_smooth_move_to(x + 1027, y + 561)
+#
+#     # 解析结果并提取匹配模式的文本
+#     for detection in result:
+#         # logger.debug('---------->', detection)
+#         # text = detection
+#         # if pattern_pl.search(text):
+#         #     matched_text = pattern_pl.search(text).group()
+#         #     logger.debug(f"识别疲劳值->:{matched_text}")
+#         #     parts = matched_text.split("/")
+#         #     return int(parts[0])
+#         fatigue = extract_fatigue_number(detection)
+#         if fatigue is not None:
+#             logger.debug(f"识别疲劳值1->:{fatigue}")
+#             return fatigue
+#     if len(result) > 0:
+#         fatigue = result[0].strip()
+#         logger.debug(f"识别疲劳值2->:{fatigue}")
+#         return int(fatigue)
+#     logger.error("识别疲劳值为空!")
+#     return None
 
 
 # 提前先加载疲劳数字
