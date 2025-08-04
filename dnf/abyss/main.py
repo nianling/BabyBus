@@ -1162,7 +1162,7 @@ def main_script():
 
                         pass
                     else:
-                        random_direct = random.choice(random.choice([kbu.single_direct, kbu.double_direct]))
+                        random_direct = random.choice(['DOWN', "LEFT"])
                         logger.warning('角色也没识别到,什么都没识别到,随机跑个方向看看-->{}', random_direct)
                         mover.move(target_direction=random_direct)
                     continue
