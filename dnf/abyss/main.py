@@ -576,6 +576,7 @@ def main_script():
 
             fight_count += 1
             logger.info(f'{role.name} 刷图,第 {fight_count} 次，开始...')
+            mu.do_move_to(x + width / 4, y + height / 4)  # 重置鼠标位置
 
             # 记录疲劳值
             # current_fatigue_ocr = do_ocr_fatigue_retry(handle, x, y, reader, 5)  # 识别疲劳值
@@ -610,6 +611,7 @@ def main_script():
             hole_appeared = False
             boss_appeared = False
             die_time = 0
+            delay_break = 0
 
             # frame = 0
             while True:  # 循环打怪过图
@@ -726,7 +728,7 @@ def main_script():
                     pass
                 else:  # todo 没有识别到角色
                     if not fight_victory or (monster_xywh_list or boss_xywh_list or ball_xywh_list):
-                        random_direct = random.choice(kbu.single_direct)
+                        random_direct = random.choice(['LEFT', 'DOWN', 'LEFT_DOWN'])
                         logger.warning('未检测到角色,随机跑个方向看看{}', random_direct)
                         mover.move(target_direction=random_direct)
                     else:
@@ -1127,6 +1129,11 @@ def main_script():
                     if not loot_xywh_list and not gold_xywh_list:
                         logger.warning("出现再次挑战,并且没有掉落物了,终止")
                         # time.sleep(3)  # 等待加载地图
+                        if delay_break < 3:
+                            # 延迟break，终止掉当前刷一次图的循环，多花0.3秒再次进行检测，处理商店和掉落物
+                            delay_break = delay_break + 1
+                            time.sleep(0.1)
+                            continue
 
                         break  # 终止掉当前刷一次图的循环
 
@@ -1205,7 +1212,7 @@ def main_script():
                 logger.info(f'刷完{fight_count}次了，结束...')
                 # 返回城镇
                 kbu.do_press(dnf.key_return_to_town)
-                time.sleep(2)
+                time.sleep(5)
                 finished = True
                 # break
 
@@ -1215,7 +1222,7 @@ def main_script():
                 logger.info(f'刷完{fight_count}次了，结束...')
                 # 返回城镇
                 kbu.do_press(dnf.key_return_to_town)
-                time.sleep(2)
+                time.sleep(5)
                 finished = True
                 # break
 
@@ -1229,7 +1236,7 @@ def main_script():
                 logger.info(f'刷了{fight_count}次了,再次挑战禁用状态,不能再次挑战了...')
                 # 返回城镇
                 kbu.do_press(dnf.key_return_to_town)
-                time.sleep(2)
+                time.sleep(5)
                 finished = True
             else:
                 # logger.warning("即将按下再次挑战")
@@ -1275,8 +1282,6 @@ def main_script():
             pause_event.wait()  # 暂停
             # 转移材料到账号金库
             transfer_materials_to_account_vault(x, y)
-            # 垃圾直播活动
-            activity_live(x, y)
             # 收邮件
             if datetime.now().weekday() == 2:
                 logger.info('收邮件')
@@ -1309,7 +1314,7 @@ def main_script():
             time.sleep(0.2)
         else:
             logger.warning("已经刷完最后一个角色了，结束脚本")
-            email_subject = f"深渊 任务执行结束"
+            email_subject = f"深渊 任务执行结束 {pathlib.Path(__file__).stem.replace('main', '').strip() if 'main' in pathlib.Path(__file__).stem else ''}"
             email_content = email_subject
             mail_receiver = mail_config.get("receiver")
             if mail_receiver:

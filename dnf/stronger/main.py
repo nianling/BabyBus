@@ -625,7 +625,7 @@ def minimap_analyse(capturer):
             # cv2.imwrite(f'errorDetectMap_init_{map_error_cnt}.jpg', img0)
             # logger.error(f"分析小地图的行列init，第 {map_error_cnt} 次出错,行列是 {rows} , {cols}")
             # logger.error("暂停2秒继续重试！！")
-            time.sleep(0.2)
+            time.sleep(0.4)
         else:
             map_error_cnt = 0
 
@@ -820,6 +820,7 @@ def main_script():
             fight_count += 1
             logger.info(f'【{role.name}】 刷图,第 {fight_count} 次，开始...')
             one_game_start = time.time()
+            mu.do_move_to(x + width / 4, y + height / 4)  # 重置鼠标位置
 
             # # 记录疲劳值
             # current_fatigue_ocr = do_ocr_fatigue_retry(handle, x, y, reader, 5)  # 识别疲劳值
@@ -912,6 +913,7 @@ def main_script():
             hero_stuck_pos = {}  # 卡住的位置 ((r,c),[(x,y),(x,y)])
             die_time = 0
             in_boss_room = False
+            delay_break = 0
 
             frame_time = time.time()
             while True:  # 循环打怪过图
@@ -1746,6 +1748,11 @@ def main_script():
                     if not loot_xywh_list and not gold_xywh_list:
                         logger.warning("出现再次挑战,并且没有掉落物了,终止")
                         # time.sleep(3)  # 等待加载地图
+                        if delay_break < 3:
+                            # 延迟break，终止掉当前刷一次图的循环，多花0.3秒再次进行检测，处理商店和掉落物
+                            delay_break = delay_break + 1
+                            time.sleep(0.1)
+                            continue
 
                         break  # 终止掉当前刷一次图的循环
 
@@ -1896,7 +1903,7 @@ def main_script():
                     time.sleep(1.6)
                 # 返回城镇
                 kbu.do_press(dnf.key_return_to_town)
-                time.sleep(2)
+                time.sleep(5)
                 finished = True
                 # break
 
@@ -1908,7 +1915,7 @@ def main_script():
                     time.sleep(1.6)
                 # 返回城镇
                 kbu.do_press(dnf.key_return_to_town)
-                time.sleep(2)
+                time.sleep(5)
                 finished = True
                 # break
 
@@ -1924,7 +1931,7 @@ def main_script():
                     time.sleep(1.6)
                 # 返回城镇
                 kbu.do_press(dnf.key_return_to_town)
-                time.sleep(2)
+                time.sleep(5)
                 finished = True
             else:
                 # 按下再次挑战
@@ -1979,8 +1986,6 @@ def main_script():
             pause_event.wait()  # 暂停
             # 转移材料到账号金库
             transfer_materials_to_account_vault(x, y)
-            # 垃圾直播活动
-            activity_live(x, y)
             # 收邮件
             if datetime.now().weekday() == 2:
                 logger.info('收邮件')
@@ -2021,7 +2026,7 @@ def main_script():
                 "妖怪歼灭" if game_mode == 4 else
                 "未知模式"
             )
-            email_subject = f"{mode_name} 任务执行结束"
+            email_subject = f"{mode_name} 任务执行结束 {pathlib.Path(__file__).stem.replace('main', '').strip() if 'main' in pathlib.Path(__file__).stem else ''}"
             email_content = email_subject
             mail_receiver = mail_config.get("receiver")
             if mail_receiver:
