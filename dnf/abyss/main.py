@@ -229,7 +229,7 @@ def on_press(key):
             else:
                 logger.warning(f"按下 [{formatted_keys}] 键，唤醒运行...")
                 x, y, _, _ = window_utils.get_window_rect(handle)
-                mu.do_smooth_move_to(x + 500, y + 300)
+                mu.do_move_to(x + 250, y + 150)
                 time.sleep(0.1)
                 mu.do_click(Button.left)
                 continue_pressed = True
@@ -672,7 +672,7 @@ def main_script():
                 ball_xywh_list = det.ball_xywh_list
                 hole_xywh_list = det.hole_xywh_list
 
-                if continue_exist or shop_exist or shop_mystery_exist:
+                if continue_exist or shop_exist:
                     logger.debug(f"出现商店{shop_exist}，再次挑战了{continue_exist}")
                     fight_victory = True
 
