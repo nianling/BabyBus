@@ -18,7 +18,7 @@ import config as config_
 from dnf.stronger.method import (
     extract_fatigue_number
 )
-from logger_config import logger
+from dnf.stronger.logger_config import logger
 from utils import keyboard_utils as kbu
 from utils import mouse_utils as mu
 from utils import window_utils as window_utils
