@@ -3,7 +3,7 @@
 __author__ = "廿陵 <wemean66@gmail.com> (GitHub: @nianling)"
 __version__ = '1.0'
 
-
+import hashlib
 import random
 
 import cv2
@@ -138,3 +138,16 @@ def hex_to_bgr(hex_color: str) -> tuple:
     b = int(hex_color[5:7], 16)
 
     return b, g, r
+
+
+def calculate_sha256(file_path):
+    """
+    计算文件的SHA-256哈希值
+    :param file_path: 文件路径
+    :return: SHA-256哈希值
+    """
+    sha256_hash = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(chunk)
+    return sha256_hash.hexdigest()

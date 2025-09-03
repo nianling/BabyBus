@@ -113,7 +113,7 @@ game_mode = 1
 enable_uniform_pl = False
 uniform_default_fatigue_reserved = 17
 
-weights = os.path.join(config_.project_base_path, 'weights/2025022017.best.pt')  # 模型存放的位置
+weights = os.path.join(config_.project_base_path, 'weights/stronger.pt')  # 模型存放的位置
 # <<<<<<<<<<<<<<<< 运行时相关的参数 <<<<<<<<<<<<<<<<
 
 #  >>>>>>>>>>>>>>>> 脚本所需要的变量 >>>>>>>>>>>>>>>>
@@ -674,6 +674,21 @@ def main_script():
 
         if i + 1 > 20 and game_mode == 2:
             logger.warning(f'前20个每日1+1已经结束了')
+            mode_name = (
+                "白图" if game_mode == 1 else
+                "每日1+1" if game_mode == 2 else
+                "妖气追踪" if game_mode == 3 else
+                "妖怪歼灭" if game_mode == 4 else
+                "未知模式"
+            )
+            email_subject = f"{mode_name} 任务执行结束 {pathlib.Path(__file__).stem.replace('main', '').strip() if 'main' in pathlib.Path(__file__).stem else ''}"
+            email_content = email_subject
+            mail_receiver = mail_config.get("receiver")
+            if mail_receiver:
+                tool_executor.submit(lambda: (
+                    mail_sender.send_email(email_subject, email_content, mail_receiver),
+                    logger.info("任务执行结束")
+                ))
             break
 
         # 读取角色配置
@@ -1126,7 +1141,18 @@ def main_script():
                                                     elif 882 < hero_xywh[0] < 888 and 300 < hero_xywh[1] < 305 and kbd_current_direction == "DOWN" and previous == "RIGHT":
                                                         logger.debug("人可能被卡在右上了")
                                                         random_direct = "LEFT_DOWN"
+                                                    elif hero_xywh[0] > 888 and previous == "RIGHT":
+                                                        logger.debug("已经向右走到底了，回头")
+                                                        random_direct = random.choice(["LEFT", "LEFT_DOWN", "LEFT_UP"])
+                                                        mover.move(target_direction=random_direct)
+                                                        time.sleep(round(random.uniform(0.6, 0.8), 1))
+                                                    elif hero_xywh[0] < 179 and previous == "LEFT":
+                                                        logger.debug("已经向左到底了，回头")
+                                                        random_direct = random.choice(["RIGHT", "RIGHT_DOWN", "RIGHT_UP"])
+                                                        mover.move(target_direction=random_direct)
+                                                        time.sleep(round(random.uniform(0.6, 0.8), 1))
                                                     else:
+                                                        logger.debug("else 了", previous)
                                                         random_direct = random.choice(list(filter(lambda x1: x1 != get_opposite_direction(previous) and x1 != kbd_current_direction, kbu.single_direct)))
                                                     break
                                         else:
@@ -1134,6 +1160,10 @@ def main_script():
                                             previous = path_stack[-1][1]
                                             random_direct = random.choice(
                                                 list(filter(lambda x1: x1 != get_opposite_direction(path_stack[-1][1]) and x1 != kbd_current_direction, kbu.single_direct)))
+                                            if hero_xywh[0] < 70:
+                                                random_direct = random.choice(["RIGHT", random_direct])
+                                            elif hero_xywh[0] > 950:
+                                                random_direct = random.choice(["LEFT", random_direct])
 
                                         if hero_xywh[1] < 400 and kbd_current_direction == "UP" and previous == "RIGHT" and hero_xywh[0] < 630:
                                             logger.debug("走到底，上小卡处理1。。")
@@ -1646,8 +1676,8 @@ def main_script():
                             if (
                                     (door[0] <= material_box[0] <= hero_xywh[0] or door[0] >= material_box[0] >= hero_xywh[0])
                                     and (
-                                        door[1] <= material_box[1] <= hero_xywh[1]
-                                        or door[1] >= material_box[1] >= hero_xywh[1]
+                                        (door[1] <= material_box[1] <= hero_xywh[1] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                        or (door[1] >= material_box[1] >= hero_xywh[1] and abs(material_box[0] - hero_xywh[0]) < 170)
                                         or (abs(door[1] - material_box[1]) < 100 and abs(door[1] - hero_xywh[1]) < 100 and abs(material_box[1] - hero_xywh[1]) < 100)
                                     )
                             ):
@@ -1656,8 +1686,8 @@ def main_script():
                             elif (
                                     (door[1] <= material_box[1] <= hero_xywh[1] or door[1] >= material_box[1] >= hero_xywh[1])
                                     and (
-                                        door[0] <= material_box[0] <= hero_xywh[0]
-                                        or door[0] >= material_box[0] >= hero_xywh[0]
+                                        (door[0] <= material_box[0] <= hero_xywh[0] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                        or (door[0] >= material_box[0] >= hero_xywh[0] and abs(material_box[0] - hero_xywh[0]) < 170)
                                         or (abs(door[0] - material_box[0]) < 100 and abs(door[0] - hero_xywh[0]) < 100 and abs(material_box[0] - hero_xywh[0]) < 100)
                                     )
                             ):
@@ -1775,13 +1805,13 @@ def main_script():
                     if not card_appear_time:
                         card_appear_time = time.time()
 
-                        # 如果商店开着,需要esc关闭
+                    # 如果商店开着,需要esc关闭
                     if shop_mystery_exist:
                         # cv2.imwrite(f'./shop_imgs/mystery_Shop_{datetime.fromtimestamp(time.time()).strftime("%Y%m%d_%H%M%S")}.jpg', img0)
                         time.sleep(0.5)
                         process_mystery_shop(capturer.capture(), x, y, buy_tank_type, buy_bell_ticket, buy_shanshanming)  # 重新截图，防止前面截的帧有干扰不清晰
 
-                    logger.info("翻牌时有神秘商店，处理完毕")
+                        logger.info("翻牌时有神秘商店，处理完毕")
 
                     if time.time() - card_appear_time > 0.5:
                         if not card_esc_time:

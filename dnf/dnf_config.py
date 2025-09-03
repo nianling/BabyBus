@@ -6,6 +6,7 @@ __version__ = '1.0'
 
 from pynput import keyboard
 from pynput.keyboard import Key, KeyCode
+import weights
 
 window_title = "地下城与勇士：创新世纪"
 
@@ -25,9 +26,9 @@ Key_collect_loot = numpad_2
 
 # 定义脚本暂停组合键
 key_pause_script = {keyboard.Key.delete}
-# 定义终止脚本组合键
+# 定义终止脚本组合键 {keyboard.Key.ctrl_l, keyboard.Key.alt_l, keyboard.Key.f10}
 key_stop_script = {keyboard.Key.end}
-# 定义任务开始组合键
+# 定义任务开始组合键 'ctrl+alt+f11'
 key_start_script = 'f10'
 
 # 截图日志

@@ -96,7 +96,7 @@ buy_shanshanming = 2  # buy_type: 0，不买，1买粉罐子，2买传说罐子�
 enable_uniform_pl = False
 uniform_default_fatigue_reserved = 17
 
-weights = os.path.join(config_.project_base_path, 'weights/abyss.04032147.best.pt')  # 模型存放的位置
+weights = os.path.join(config_.project_base_path, 'weights/abyss.pt')  # 模型存放的位置
 # <<<<<<<<<<<<<<<< 运行时相关的参数 <<<<<<<<<<<<<<<<
 
 #  >>>>>>>>>>>>>>>> 脚本所需要的变量 >>>>>>>>>>>>>>>>
