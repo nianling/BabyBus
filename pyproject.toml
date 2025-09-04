@@ -15,6 +15,7 @@ dependencies = [
     "pyautogui>=0.9.54",
     "pynput>=1.8.1",
     "pywin32>=310",
+    "schedule>=1.2.2",
     "scikit-image>=0.25.2",
     "ultralytics>=8.3.165",
 ]
