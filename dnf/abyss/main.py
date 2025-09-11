@@ -1101,7 +1101,7 @@ def main_script():
                     pause_event.wait()
                     aolakou = detect_aolakou(results[0].orig_img)
                     # todo 前多少角色买奥拉扣
-                    if aolakou and role.no <= 20:
+                    if aolakou and role.no <= 0:
                         mu.do_move_to(x + 123, y + 209)
                         time.sleep(0.2)
                         mu.do_click(Button.left)
