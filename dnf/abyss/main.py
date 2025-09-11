@@ -52,7 +52,8 @@ from dnf.stronger.player import (
     activity_live,
     do_recognize_fatigue,
     receive_mail, match_and_click,
-    close_new_day_dialog
+    close_new_day_dialog,
+    detect_aolakou,
 )
 from dnf.stronger.skill_util import get_skill_initial_images
 from logger_config import logger
@@ -1098,6 +1099,16 @@ def main_script():
                     mover._release_all_keys()
 
                     pause_event.wait()
+                    aolakou = detect_aolakou(results[0].orig_img)
+                    # todo 前多少角色买奥拉扣
+                    if aolakou and role.no <= 20:
+                        mu.do_move_to(x + 123, y + 209)
+                        time.sleep(0.2)
+                        mu.do_click(Button.left)
+                        time.sleep(0.2)
+                        mu.do_click(Button.left)
+                        time.sleep(0.2)
+
                     # 神秘商店
                     if shop_mystery_exist:
                         # cv2.imwrite(f'./shop_imgs/mystery_Shop_{datetime.fromtimestamp(time.time()).strftime("%Y%m%d_%H%M%S")}.jpg', img0)
@@ -1111,7 +1122,7 @@ def main_script():
                         continue
 
                     # 如果商店开着,需要esc关闭
-                    if shop_exist:
+                    if shop_exist or aolakou:
                         kbu.do_press(Key.esc)
                         logger.warning("普通商店开着,需要esc关闭")
                         time.sleep(0.1)
