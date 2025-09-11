@@ -514,17 +514,9 @@ def main_script():
             logger.info("传送到风暴门口,选地图...")
             # 传送到风暴门口
             from_sailiya_to_abyss(x, y)
-            logger.info("先向上移，保持顶到最上位置。。")
-            kbu.do_press_with_time(Key.up, 800, 50)
-            # # 让角色走到最左面，进图选择页面
-            # logger.info("再向左走，进入选择地图页面。。")
-            # kbu.do_press_with_time(Key.left, 2500, 300)
-
-            # 先向右移动一点，以防一传过来的就离得很近
-            logger.info("向右移一点，以防一传过来的就离得很近。。")
-            kbu.do_press_with_time(Key.right, 1000, 50)
-            logger.info("向左走向左走，进入选择地图页面。。")
-            kbu.do_press_with_time(Key.left, 2500, 50)
+            kbu.do_press_with_time(Key.left, 800, 50)
+            kbu.do_press_with_time(Key.down, 800, 50)
+            kbu.do_press_with_time(Key.up, 1500, 50)
             time.sleep(0.5)
             time.sleep(1.5)  # 先等自己移动到深渊图
 

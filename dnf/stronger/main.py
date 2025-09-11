@@ -758,17 +758,9 @@ def main_script():
                 logger.info("传送到风暴门口,选地图...")
                 # 传送到风暴门口
                 from_sailiya_to_abyss(x, y)
-                logger.info("先向上移，保持顶到最上位置。。")
-                kbu.do_press_with_time(Key.up, 800, 50)
-                # # 让角色走到最左面，进图选择页面
-                # logger.info("再向左走，进入选择地图页面。。")
-                # kbu.do_press_with_time(Key.left, 2500, 300)
-
-                # 先向右移动一点，以防一传过来的就离得很近
-                logger.info("向右移一点，以防一传过来的就离得很近。。")
-                kbu.do_press_with_time(Key.right, 1000, 50)
-                logger.info("向左走向左走，进入选择地图页面。。")
-                kbu.do_press_with_time(Key.left, 2500, 50)
+                kbu.do_press_with_time(Key.left, 800, 50)
+                kbu.do_press_with_time(Key.down, 800, 50)
+                kbu.do_press_with_time(Key.up, 1500, 50)
                 time.sleep(0.5)
                 time.sleep(1.5)  # 先等自己移动到深渊图
 
@@ -929,6 +921,7 @@ def main_script():
             die_time = 0
             in_boss_room = False
             delay_break = 0
+            exception_mail_notify_time = 0
 
             frame_time = time.time()
             while True:  # 循环打怪过图
@@ -1052,6 +1045,19 @@ def main_script():
                 if hero_xywh:
                     fq.enqueue((hero_xywh[0], hero_xywh[1]))
                     hero_pos_is_stable = fq.coords_is_stable(threshold=10, window_size=10)
+                    if hero_pos_is_stable:
+                        if not exception_mail_notify_time:
+                            exception_mail_notify_time = time.time()
+                        if time.time() - exception_mail_notify_time > 600:
+                            exception_mail_notify_time = 0
+                            mail_receiver = mail_config.get("receiver")
+                            if mail_receiver:
+                                tool_executor.submit(lambda: (
+                                    mail_sender.send_email("刷图异常提醒", "刷图异常提醒，长时间未动，及时介入处理。", mail_receiver),
+                                    logger.info("刷图异常提醒，长时间未动，及时介入处理。")
+                                ))
+                    else:
+                        exception_mail_notify_time = 0
                     if hero_pos_is_stable and not sss_appeared and stuck_room_idx is None:
                         random_direct = random.choice(random.choice([kbu.single_direct, kbu.double_direct]))
                         logger.warning('可能卡住不能移动了{},随机跑个方向看看-->{}', hero_xywh, random_direct)  # todo 方向处理
