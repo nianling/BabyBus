@@ -34,7 +34,7 @@ if not exist "%BASE_DIR%.venv\Scripts\python.exe" (
 )
 
 :: 检查 main.py 是否存在
-if not exist "%BASE_DIR%dnf\abyss\main.py" (
+if not exist "%BASE_DIR%dnf\stronger\main.py" (
     echo 错误: main.py 文件不存在，请检查路径是否正确。
     pause
     exit /b
