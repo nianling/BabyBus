@@ -515,8 +515,9 @@ def main_script():
             logger.info("传送到风暴门口,选地图...")
             # 传送到风暴门口
             from_sailiya_to_abyss(x, y)
-            kbu.do_press_with_time(Key.left, 800, 50)
-            kbu.do_press_with_time(Key.down, 800, 50)
+            kbu.do_press_with_time(Key.right, 500, 50)
+            kbu.do_press_with_time(Key.left, 1000, 50)
+            kbu.do_press_with_time(Key.down, 1000, 50)
             kbu.do_press_with_time(Key.up, 1500, 50)
             time.sleep(0.5)
             time.sleep(1.5)  # 先等自己移动到深渊图
