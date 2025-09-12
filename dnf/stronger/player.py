@@ -713,7 +713,7 @@ def detect_aolakou(full_screen):
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
     matches = match_template(gray_screenshot, template_again_gray, threshold=0.8)
     if len(matches) > 0:
-        print("有普通奥拉扣！！")
+        logger.debug("有普通奥拉扣！！")
         return True
 
     template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/activity/act_aolakou2.jpg'),
@@ -721,7 +721,7 @@ def detect_aolakou(full_screen):
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
     matches = match_template(gray_screenshot, template_again_gray, threshold=0.8)
     if len(matches) > 0:
-        print("有特殊奥拉扣！！")
+        logger.debug("有特殊奥拉扣！！")
         return True
 
     return False

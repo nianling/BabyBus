@@ -665,9 +665,11 @@ def main_script():
                 ball_xywh_list = det.ball_xywh_list
                 hole_xywh_list = det.hole_xywh_list
 
+                aolakou = False
                 if continue_exist or shop_exist:
                     logger.debug(f"出现商店{shop_exist}，再次挑战了{continue_exist}")
                     fight_victory = True
+                    aolakou = detect_aolakou(results[0].orig_img)
 
                 if ball_xywh_list:
                     logger.debug(f"出现球了")
@@ -729,7 +731,8 @@ def main_script():
                         if not collect_loot_pressed and (sss_exist or continue_exist or shop_exist or shop_mystery_exist):
                             mover.move(target_direction="LEFT")
                             # time.sleep(0.1)
-                    continue
+                    if not aolakou:
+                        continue
 
                 # ############################### 判断-准备打怪 ######################################
                 wait_for_attack = ((hero_xywh and (monster_xywh_list or boss_xywh_list or ball_xywh_list) and not fight_victory)
@@ -1099,7 +1102,6 @@ def main_script():
                     mover._release_all_keys()
 
                     pause_event.wait()
-                    aolakou = detect_aolakou(results[0].orig_img)
                     # todo 前多少角色买奥拉扣
                     if aolakou and role.no <= 0:
                         mu.do_move_to(x + 123, y + 209)
