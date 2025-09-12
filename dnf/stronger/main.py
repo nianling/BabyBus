@@ -1769,7 +1769,9 @@ def main_script():
                     # 不管了,全部释放掉
                     mover._release_all_keys()
 
-                    aolakou = detect_aolakou(results[0].orig_img)
+                    aolakou = False
+                    if game_mode == 2:
+                        aolakou = detect_aolakou(results[0].orig_img)
                     # todo 前多少角色买奥拉扣
                     if aolakou and role.no <= 0:
                         mu.do_move_to(x + 337, y + 209)
