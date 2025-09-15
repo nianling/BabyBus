@@ -968,7 +968,8 @@ def activity_live(x, y):
     time.sleep(0.2)
 
 
-template_mail = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/mail.png'), cv2.IMREAD_GRAYSCALE)
+template_mail1 = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/mail_icon1.png'), cv2.IMREAD_GRAYSCALE)
+template_mail2 = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/mail_icon2.png'), cv2.IMREAD_GRAYSCALE)
 
 
 def receive_mail(img, x, y):
@@ -977,26 +978,32 @@ def receive_mail(img, x, y):
     """
     try:
         logger.info('准备领取邮件')
-        # 874,272 890,282
-        mail_img = img[272:283, 874:891]
-        gray = cv2.cvtColor(mail_img, cv2.COLOR_BGR2GRAY)
-        similarity_score = ssim(template_mail, gray)
-        # logger.info(f'score:【{similarity_score}】')
-        if similarity_score > 0.9:
-            logger.info('有邮件')
-            mu.do_move_to(x + 885, y + 329)
-            time.sleep(0.2)
-            mu.do_click(Button.left)
+
+        have_mail = False
+        icon1 = match_and_click(img, x, y, template_mail1, None)
+        if icon1:
+            logger.info('有邮件,已打开收件箱！')
+            have_mail = True
+        else:
+            icon2 = match_and_click(img, x, y, template_mail2, None)
+            if icon2:
+                logger.info('有叹号邮件,已打开收件箱！')
+                have_mail = True
+            else:
+                logger.info('没有邮件。')
+
+        if have_mail:
             time.sleep(1)
             mu.do_move_to(x + 414, y + 458)
             time.sleep(0.2)
             mu.do_click(Button.left)
             time.sleep(2)
             logger.info('领取邮件完毕')
-        else:
-            logger.info('没有邮件')
+
+            time.sleep(0.2)
+            kbu.do_press(Key.esc)
+
         time.sleep(0.2)
-        kbu.do_press(Key.esc)
     except Exception as e:
         logger.error('领邮件出错', e)
 
