@@ -241,6 +241,38 @@ def match_and_click(img_full_color, x, y, template_gray, default_position, thres
     return matched
 
 
+def match_get_center(img_full_color, x, y, template_gray, threshold=0.9):
+    """
+    匹配,获取中心点（x,y）
+    """
+    center = None
+    try:
+        gray_screenshot = cv2.cvtColor(img_full_color, cv2.COLOR_BGRA2GRAY)
+        matches = match_template(gray_screenshot, template_gray, threshold=threshold)
+        if len(matches) > 0:
+            top_left, bottom_right = matches[0]
+            x1, y1 = top_left
+            x2, y2 = bottom_right
+            center_x = int((x1 + x2) / 2)
+            center_y = int((y1 + y2) / 2)
+            print('center', center_x, center_y)
+            center = x + center_x, y + center_y
+    except Exception as e:
+        logger.error(e)
+    return center
+
+
+title_gray = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/xb_fighting.png'), cv2.IMREAD_GRAYSCALE)
+
+
+def calc_role_height(img_full_color, x, y):
+    title_center = match_get_center(img_full_color, x, y, title_gray)
+    if title_center:
+        height = 160 - (title_center[1] - (y + 273))
+        return height
+    return None
+
+
 def clik_to_quit_game(handle, x, y):
     """
     结束游戏
@@ -253,11 +285,18 @@ def clik_to_quit_game(handle, x, y):
 
     full_screen = window_utils.capture_window_BGRX(handle)
     template_quit_game = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/quit_game1.png'), cv2.IMREAD_GRAYSCALE)
-    match_and_click(full_screen, x, y, template_quit_game, (679, 497))
+    step1 = match_and_click(full_screen, x, y, template_quit_game, (679, 497))
+    time.sleep(0.5)
 
     full_screen = window_utils.capture_window_BGRX(handle)
-    template_again_gray = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/quit_game.png'), cv2.IMREAD_GRAYSCALE)
-    match_and_click(full_screen, x, y, template_again_gray, None)
+    template_again_gray = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/return_btn.png'), cv2.IMREAD_GRAYSCALE)
+    return_btn_center = match_get_center(full_screen, x, y, template_again_gray)
+    if return_btn_center:
+        mu.do_move_to(return_btn_center[0] + 65, return_btn_center[1])
+        time.sleep(0.5)
+        mu.do_click(Button.left)
+        time.sleep(0.5)
+
 
 
 # # todo todo 截好图传参(先移动鼠标,)，判断图片
