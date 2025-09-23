@@ -541,9 +541,16 @@ def main_script():
         # 角色刷完结束
         finished = False
         buff_finished = False
+        exception_mail_notify_timer = None
 
         # todo 循环进图开始>>>>>>>>>>>>>>>>>>>>>>>>
-        while not finished and need_fight:  # 循环进图
+        while not finished and need_fight:  # 循环进图，再次挑战
+            if exception_mail_notify_timer:
+                exception_mail_notify_timer.cancel()
+            exception_mail_notify_timer = threading.Timer(300, mail_sender.send_email, ("刷图异常提醒", "刷图异常提醒，长时间未动，及时介入处理。", mail_config.get("receiver")))
+            exception_mail_notify_timer.start()
+            logger.debug("启动刷图异常提醒定时器")
+
             # 先要等待地图加载
             time.sleep(1)
 
@@ -594,7 +601,7 @@ def main_script():
 
             logger.info(f'准备打怪..')
 
-            # todo 循环打怪过图 循环开始////////////////////////////////
+            # todo 循环打怪过图，过房间 循环开始////////////////////////////////
 
             collect_loot_pressed = False  # 按过移动物品了
             collect_loot_pressed_time = 0
@@ -607,7 +614,7 @@ def main_script():
             delay_break = 0
 
             # frame = 0
-            while True:  # 循环打怪过图
+            while True:  # 循环打怪过图，过房间
                 pause_event.wait()  # 暂停
 
                 # 截图

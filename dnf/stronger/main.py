@@ -799,11 +799,18 @@ def main_script():
         fight_count = 0
         # 角色刷完结束
         finished = False
+        exception_mail_notify_timer = None
 
         # todo 循环进图开始>>>>>>>>>>>>>>>>>>>>>>>>
         # 一直循环
         pause_event.wait()  # 暂停
-        while not finished and need_fight:  # 循环进图
+        while not finished and need_fight:  # 循环进图，再次挑战
+            if exception_mail_notify_timer:
+                exception_mail_notify_timer.cancel()
+            exception_mail_notify_timer = threading.Timer(300, mail_sender.send_email, ("刷图异常提醒", "刷图异常提醒，长时间未动，及时介入处理。", mail_config.get("receiver")))
+            exception_mail_notify_timer.start()
+            logger.debug("启动刷图异常提醒定时器")
+
             # 先要等待地图加载 todo 改动态识别
             # time.sleep(4.5)
             pause_event.wait()  # 暂停
@@ -902,7 +909,7 @@ def main_script():
 
             logger.info(f'准备打怪..')
 
-            # todo 循环打怪过图 循环开始////////////////////////////////
+            # todo 循环打怪过图，过房间 循环开始////////////////////////////////
             fq = FixedLengthQueue(max_length=30)
             room_idx_list = FixedLengthQueue(max_length=100)
             stuck_room_idx = None
@@ -921,10 +928,9 @@ def main_script():
             die_time = 0
             in_boss_room = False
             delay_break = 0
-            exception_mail_notify_time = 0
 
             frame_time = time.time()
-            while True:  # 循环打怪过图
+            while True:  # 循环打怪过图，过房间
                 # 限制处理速率
                 if max_fps:
                     if time.time() - frame_time < 1.0 / max_fps:
@@ -1045,19 +1051,6 @@ def main_script():
                 if hero_xywh:
                     fq.enqueue((hero_xywh[0], hero_xywh[1]))
                     hero_pos_is_stable = fq.coords_is_stable(threshold=10, window_size=10)
-                    if hero_pos_is_stable:
-                        if not exception_mail_notify_time:
-                            exception_mail_notify_time = time.time()
-                        if time.time() - exception_mail_notify_time > 600:
-                            exception_mail_notify_time = 0
-                            mail_receiver = mail_config.get("receiver")
-                            if mail_receiver:
-                                tool_executor.submit(lambda: (
-                                    mail_sender.send_email("刷图异常提醒", "刷图异常提醒，长时间未动，及时介入处理。", mail_receiver),
-                                    logger.info("刷图异常提醒，长时间未动，及时介入处理。")
-                                ))
-                    else:
-                        exception_mail_notify_time = 0
                     if hero_pos_is_stable and not sss_appeared and stuck_room_idx is None:
                         random_direct = random.choice(random.choice([kbu.single_direct, kbu.double_direct]))
                         logger.warning('可能卡住不能移动了{},随机跑个方向看看-->{}', hero_xywh, random_direct)  # todo 方向处理

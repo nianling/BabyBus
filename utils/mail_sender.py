@@ -37,6 +37,9 @@ class EmailSender:
         :param receiver: 收件人
         :return:
         """
+        if not receiver:
+            print("收件人为空,忽略")
+            return
         message = self._build_email(subject, content, receiver)
         try:
             with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as smtp_obj:
