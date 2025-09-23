@@ -3,6 +3,7 @@
 __author__ = "廿陵 <wemean66@gmail.com> (GitHub: @nianling)"
 __version__ = '1.0'
 
+import os
 import random
 from datetime import datetime
 import time
@@ -16,6 +17,8 @@ from skimage.metrics import structural_similarity as ssim
 from dnf.stronger.logger_config import logger
 from dnf.stronger.role_config import RoleConfig, Skill
 from utils import keyboard_utils as kbu
+import config as config_
+from utils.utilities import match_template
 
 # x1, y1 = 527, 645
 # x2, y2 = 770, 712
@@ -203,6 +206,9 @@ def check_one_skill_cd(skill_key, img, skill_images):
     y = 534 + (28 + 3) * (index // 7)
     skill_img = img[y:y + skill_height, x:x + skill_width]
     init_skill_img = skill_images[skill_key]
+    if init_skill_img is None:
+        # logger.debug(f'按键【{skill_key}】是空技能')
+        return False
     gray = cv2.cvtColor(skill_img, cv2.COLOR_BGR2GRAY)
     similarity_score = ssim(init_skill_img, gray)
     # logger.debug(f'技能【{skill_key}】相似度:【{similarity_score}】')
@@ -282,7 +288,7 @@ def get_available_skill_from_list_by_match(skills, img0, skill_images):
         # logger.debug(f"CD判断:【{s}】")
         if isinstance(s, str) or isinstance(s, Key):
             if check_one_skill_cd(s, img0, skill_images):
-                logger.debug(f"字符串技能:【{s}】 已恢复cd(识别)")
+                # logger.debug(f"字符串技能:【{s}】 已恢复cd(识别)")
                 return s
         elif isinstance(s, list):
             return s
@@ -290,26 +296,29 @@ def get_available_skill_from_list_by_match(skills, img0, skill_images):
             if s.cd:
                 t = time.time()
                 if t - s.cd > s.recent_use_time + 0.1:
-                    logger.debug(f"Skill:【{s.name}】 已恢复cd(计算)")
-                    # s.recent_use_time = t  # 更新最近使用时间
+                    # logger.debug(f"Skill:【{s.name}】 已恢复cd(计算)")
+                    ...
                     return s
                 else:
-                    logger.debug(f'{s}未恢复计算cd,再找')
+                    # logger.debug(f'{s}未恢复计算cd,再找')
+                    ...
             elif s.hotkey_cd_command_cast and s.hot_key and s.command:  # 需要用快捷键识别CD，但是又需要多个指令操作的情况
                 sname = s.hot_key
                 if check_one_skill_cd(sname, img0, skill_images):
-                    logger.debug(f"Skill:【{s.name}】 已恢复cd(识别指令)")
+                    # logger.debug(f"Skill:【{s.name}】 已恢复cd(识别指令)")
                     return s
                 else:
-                    logger.debug(f'{s}未恢复识别cd,再找')
+                    # logger.debug(f'{s}未恢复识别cd,再找')
+                    ...
             elif len(s.command) == 1 or s.hot_key is not None:
                 sname = s.hot_key if s.hot_key is not None else s.command[0]
                 if check_one_skill_cd(sname, img0, skill_images):
-                    logger.debug(f"Skill:【{s.name}】 已恢复cd(识别)")
+                    # logger.debug(f"Skill:【{s.name}】 已恢复cd(识别)")
                     return s
                 else:
-                    logger.debug(f'{s}未恢复识别cd,再找')
-            logger.debug('未恢复cd,再找')
+                    # logger.debug(f'{s}未恢复识别cd,再找')
+                    ...
+            # logger.debug('未恢复cd,再找')
     return None
 
 
@@ -362,8 +371,13 @@ def get_skill_initial_images(full_image):
         skill_img = full_image[_y:_y + skill_height, _x:_x + skill_width]
         # 灰度化
         skill_img = cv2.cvtColor(skill_img, cv2.COLOR_BGR2GRAY)
+        empty_skill = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/empty_skill.png'), cv2.IMREAD_GRAYSCALE)
         # 存字典
-        skill_images[key] = skill_img
+        if match_template(skill_img, empty_skill, threshold=0.85):
+            skill_images[key] = None
+            logger.debug(f"存在空技能:【{key}】")
+        else:
+            skill_images[key] = skill_img
     return skill_images
 
 

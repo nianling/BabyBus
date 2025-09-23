@@ -63,7 +63,8 @@ from dnf.stronger.player import (
     activity_live,
     do_recognize_fatigue,
     receive_mail, match_and_click,
-    close_new_day_dialog
+    close_new_day_dialog,
+    detect_aolakou,
 )
 from logger_config import logger
 from role_list import get_role_config_list
@@ -758,8 +759,9 @@ def main_script():
                 logger.info("传送到风暴门口,选地图...")
                 # 传送到风暴门口
                 from_sailiya_to_abyss(x, y)
-                kbu.do_press_with_time(Key.left, 800, 50)
-                kbu.do_press_with_time(Key.down, 800, 50)
+                kbu.do_press_with_time(Key.right, 500, 50)
+                kbu.do_press_with_time(Key.left, 1000, 50)
+                kbu.do_press_with_time(Key.down, 1000, 50)
                 kbu.do_press_with_time(Key.up, 1500, 50)
                 time.sleep(0.5)
                 time.sleep(1.5)  # 先等自己移动到深渊图
@@ -1761,8 +1763,20 @@ def main_script():
                     # 不管了,全部释放掉
                     mover._release_all_keys()
 
+                    aolakou = False
+                    if game_mode == 2:
+                        aolakou = detect_aolakou(results[0].orig_img)
+                    # todo 前多少角色买奥拉扣
+                    if aolakou and role.no <= 0:
+                        mu.do_move_to(x + 337, y + 209)
+                        time.sleep(0.2)
+                        mu.do_click(Button.left)
+                        time.sleep(0.2)
+                        mu.do_click(Button.left)
+                        time.sleep(0.2)
+
                     # 如果商店开着,需要esc关闭
-                    if shop_mystery_exist or shop_exist:
+                    if shop_mystery_exist or shop_exist or aolakou:
                         if shop_mystery_exist:
                             # cv2.imwrite(f'./shop_imgs/mystery_Shop_{datetime.fromtimestamp(time.time()).strftime("%Y%m%d_%H%M%S")}.jpg', img0)
                             time.sleep(0.5)

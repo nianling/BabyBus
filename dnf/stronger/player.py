@@ -241,6 +241,38 @@ def match_and_click(img_full_color, x, y, template_gray, default_position, thres
     return matched
 
 
+def match_get_center(img_full_color, x, y, template_gray, threshold=0.9):
+    """
+    匹配,获取中心点（x,y）
+    """
+    center = None
+    try:
+        gray_screenshot = cv2.cvtColor(img_full_color, cv2.COLOR_BGRA2GRAY)
+        matches = match_template(gray_screenshot, template_gray, threshold=threshold)
+        if len(matches) > 0:
+            top_left, bottom_right = matches[0]
+            x1, y1 = top_left
+            x2, y2 = bottom_right
+            center_x = int((x1 + x2) / 2)
+            center_y = int((y1 + y2) / 2)
+            print('center', center_x, center_y)
+            center = x + center_x, y + center_y
+    except Exception as e:
+        logger.error(e)
+    return center
+
+
+title_gray = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/xb_fighting.png'), cv2.IMREAD_GRAYSCALE)
+
+
+def calc_role_height(img_full_color, x, y):
+    title_center = match_get_center(img_full_color, x, y, title_gray)
+    if title_center:
+        height = 160 - (title_center[1] - (y + 273))
+        return height
+    return None
+
+
 def clik_to_quit_game(handle, x, y):
     """
     结束游戏
@@ -253,11 +285,18 @@ def clik_to_quit_game(handle, x, y):
 
     full_screen = window_utils.capture_window_BGRX(handle)
     template_quit_game = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/quit_game1.png'), cv2.IMREAD_GRAYSCALE)
-    match_and_click(full_screen, x, y, template_quit_game, (679, 497))
+    step1 = match_and_click(full_screen, x, y, template_quit_game, (679, 497))
+    time.sleep(0.5)
 
     full_screen = window_utils.capture_window_BGRX(handle)
-    template_again_gray = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/quit_game.png'), cv2.IMREAD_GRAYSCALE)
-    match_and_click(full_screen, x, y, template_again_gray, None)
+    template_again_gray = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/return_btn.png'), cv2.IMREAD_GRAYSCALE)
+    return_btn_center = match_get_center(full_screen, x, y, template_again_gray)
+    if return_btn_center:
+        mu.do_move_to(return_btn_center[0] + 65, return_btn_center[1])
+        time.sleep(0.5)
+        mu.do_click(Button.left)
+        time.sleep(0.5)
+
 
 
 # # todo todo 截好图传参(先移动鼠标,)，判断图片
@@ -713,7 +752,7 @@ def detect_aolakou(full_screen):
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
     matches = match_template(gray_screenshot, template_again_gray, threshold=0.8)
     if len(matches) > 0:
-        print("有普通奥拉扣！！")
+        logger.debug("有普通奥拉扣！！")
         return True
 
     template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/activity/act_aolakou2.jpg'),
@@ -721,7 +760,7 @@ def detect_aolakou(full_screen):
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
     matches = match_template(gray_screenshot, template_again_gray, threshold=0.8)
     if len(matches) > 0:
-        print("有特殊奥拉扣！！")
+        logger.debug("有特殊奥拉扣！！")
         return True
 
     return False
@@ -968,7 +1007,8 @@ def activity_live(x, y):
     time.sleep(0.2)
 
 
-template_mail = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/mail.png'), cv2.IMREAD_GRAYSCALE)
+template_mail1 = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/mail_icon1.png'), cv2.IMREAD_GRAYSCALE)
+template_mail2 = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/mail_icon2.png'), cv2.IMREAD_GRAYSCALE)
 
 
 def receive_mail(img, x, y):
@@ -977,26 +1017,32 @@ def receive_mail(img, x, y):
     """
     try:
         logger.info('准备领取邮件')
-        # 874,272 890,282
-        mail_img = img[272:283, 874:891]
-        gray = cv2.cvtColor(mail_img, cv2.COLOR_BGR2GRAY)
-        similarity_score = ssim(template_mail, gray)
-        # logger.info(f'score:【{similarity_score}】')
-        if similarity_score > 0.9:
-            logger.info('有邮件')
-            mu.do_move_to(x + 885, y + 329)
-            time.sleep(0.2)
-            mu.do_click(Button.left)
+
+        have_mail = False
+        icon1 = match_and_click(img, x, y, template_mail1, None)
+        if icon1:
+            logger.info('有邮件,已打开收件箱！')
+            have_mail = True
+        else:
+            icon2 = match_and_click(img, x, y, template_mail2, None)
+            if icon2:
+                logger.info('有叹号邮件,已打开收件箱！')
+                have_mail = True
+            else:
+                logger.info('没有邮件。')
+
+        if have_mail:
             time.sleep(1)
             mu.do_move_to(x + 414, y + 458)
             time.sleep(0.2)
             mu.do_click(Button.left)
             time.sleep(2)
             logger.info('领取邮件完毕')
-        else:
-            logger.info('没有邮件')
+
+            time.sleep(0.2)
+            kbu.do_press(Key.esc)
+
         time.sleep(0.2)
-        kbu.do_press(Key.esc)
     except Exception as e:
         logger.error('领邮件出错', e)
 
