@@ -818,7 +818,7 @@ def main_script():
             pause_event.wait()  # 暂停
             try:
                 t1 = time.time()
-                time.sleep(0.5)
+                time.sleep(2)
                 load_map_task = tool_executor.submit(minimap_analyse, capturer)
                 load_map_success = load_map_task.result(timeout=5)
                 if load_map_success:
