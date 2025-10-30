@@ -20,62 +20,39 @@ from utils import keyboard_utils as kbu
 import config as config_
 from utils.utilities import match_template
 from dnf.stronger.role_config import RoleConfig
+from dnf.dnf_config import skill_hotkeys
 
 # x1, y1 = 527, 645
 # x2, y2 = 770, 712
 x1, y1 = 433, 533
 x2, y2 = 648, 593
 
-# skill_height = int((y2 - y1) / 2)
-# skill_width = int((x2 - x1) / 7)
-# skill_height = 30
-# skill_width = 30
-# skill_dict = {
-#     "q": (x1, y1),
-#     "w": (x1 + (skill_width+1), y1),
-#     "e": (x1 + (skill_width+1) * 2, y1),
-#     "r": (x1 + (skill_width+1) * 3, y1),
-#     "t": (x1 + (skill_width+1) * 4, y1),
-#     "v": (x1 + (skill_width+1) * 5, y1),
-#     # "CTRL": (x1 + skill_width * 6, y1),
-#     Key.ctrl_l: (x1 + (skill_width+1) * 6, y1),
-#
-#     "a": (x1, y1 + skill_height+1),
-#     "s": (x1 + (skill_width+1), y1 + skill_height+1),
-#     "d": (x1 + (skill_width+1) * 2, y1 + skill_height+1),
-#     "f": (x1 + (skill_width+1) * 3, y1 + skill_height+1),
-#     "g": (x1 + (skill_width+1) * 4, y1 + skill_height+1),
-#     # "TAB": (x1 + (skill_width+1) * 5, y1 + skill_height),
-#     Key.tab: (x1 + (skill_width+1) * 5, y1 + skill_height+1),
-#     "h": (x1 + (skill_width+1) * 6, y1 + skill_height+1)
-# }
 skill_height = 28
 skill_width = 28
 
 skill_dict = {
-    "q": (x1, y1),
-    "w": (x1 + skill_width, y1),
-    "e": (x1 + skill_width * 2, y1),
-    "r": (x1 + skill_width * 3, y1),
-    "t": (x1 + skill_width * 4, y1),
-    "v": (x1 + skill_width * 5, y1),
-    # "CTRL": (x1 + skill_width * 6, y1),
-    Key.ctrl_l: (x1 + skill_width * 6, y1),
+    skill_hotkeys[0]: (x1, y1),
+    skill_hotkeys[1]: (x1 + skill_width, y1),
+    skill_hotkeys[2]: (x1 + skill_width * 2, y1),
+    skill_hotkeys[3]: (x1 + skill_width * 3, y1),
+    skill_hotkeys[4]: (x1 + skill_width * 4, y1),
+    skill_hotkeys[5]: (x1 + skill_width * 5, y1),
+    skill_hotkeys[6]: (x1 + skill_width * 6, y1),
 
-    "a": (x1, y1 + skill_height),
-    "s": (x1 + skill_width, y1 + skill_height),
-    "d": (x1 + skill_width * 2, y1 + skill_height),
-    "f": (x1 + skill_width * 3, y1 + skill_height),
-    "g": (x1 + skill_width * 4, y1 + skill_height),
-    # "TAB": (x1 + skill_width * 5, y1 + skill_height),
-    Key.tab: (x1 + skill_width * 5, y1 + skill_height),
-    "h": (x1 + skill_width * 6, y1 + skill_height)
+    skill_hotkeys[7]: (x1, y1 + skill_height),
+    skill_hotkeys[8]: (x1 + skill_width, y1 + skill_height),
+    skill_hotkeys[9]: (x1 + skill_width * 2, y1 + skill_height),
+    skill_hotkeys[10]: (x1 + skill_width * 3, y1 + skill_height),
+    skill_hotkeys[11]: (x1 + skill_width * 4, y1 + skill_height),
+    skill_hotkeys[12]: (x1 + skill_width * 5, y1 + skill_height),
+    skill_hotkeys[13]: (x1 + skill_width * 6, y1 + skill_height)
 }
 
 # 默认的所有技能
 default_all_skills = []
 for hot_key in skill_dict.keys():
     default_all_skills.append(Skill(hot_key=hot_key, animation_time=0.5))
+
 
 # 计算给定图像 img 中亮度高于阈值127的像素的比例
 def score(img):
@@ -115,7 +92,7 @@ def skill_ready(skill_name, img):
     if skill_name == "x":
         return True
     skill_img = img[skill_dict[skill_name][1]: skill_dict[skill_name][1] + skill_height,
-                    skill_dict[skill_name][0]: skill_dict[skill_name][0] + skill_width]
+    skill_dict[skill_name][0]: skill_dict[skill_name][0] + skill_width]
     # cv.imshow("skill", skill_img)
     # cv.waitKey(0)
     s = score(skill_img)

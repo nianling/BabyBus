@@ -17,18 +17,20 @@ numpad_2 = KeyCode.from_vk(98)
 direct_dic = {"UP": Key.up, "DOWN": Key.down, "LEFT": Key.left, "RIGHT": Key.right}
 
 # 游戏按键定义 再次挑战
-key_try_again = numpad_1
+# key_try_again = numpad_1
+key_try_again = Key.f10
 # 游戏按键定义 返回城镇
 key_return_to_town = Key.f12
 # 游戏按键定义 移动物品
-Key_collect_loot = numpad_2
+# Key_collect_loot = numpad_2
+Key_collect_loot = '0'
 
 # 定义脚本暂停组合键
 key_pause_script = {keyboard.Key.delete}
 # 定义终止脚本组合键 {keyboard.Key.ctrl_l, keyboard.Key.alt_l, keyboard.Key.f10}
 key_stop_script = {keyboard.Key.end}
 # 定义任务开始组合键 'ctrl+alt+f11'
-key_start_script = 'f10'
+key_start_script = '='
 
 # 截图日志
 enable_picture_log = True
