@@ -56,7 +56,7 @@ from dnf.stronger.player import (
     detect_aolakou,
 )
 from dnf.stronger.skill_util import get_skill_initial_images
-from logger_config import logger
+from dnf.stronger.logger_config import logger
 from dnf.stronger.role_list import get_role_config_list
 from utils import keyboard_utils as kbu
 from utils import mouse_utils as mu
@@ -65,10 +65,12 @@ from utils.custom_thread_pool_excutor import SingleTaskThreadPool
 from utils.keyboard_move_controller import MovementController
 from utils.utilities import plot_one_box
 from utils.window_utils import WindowCapture
-from utils.utilities import match_template_by_roi
+from utils.utilities import match_template_by_roi, match_template
 from utils.mail_sender import EmailSender
 from dnf.mail_config import config as mail_config
 from dnf.stronger.object_detect import object_detection_cv
+from dnf.stronger.role_config import class_icon_map
+from dnf.stronger.role_config import SubClass
 
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
@@ -172,7 +174,6 @@ executor = SingleTaskThreadPool()
 img_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
 tool_executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 mail_sender = EmailSender(mail_config)  # 初始化邮件发送器
-
 
 # 创建一个队列，用于主线程和展示线程之间的通信
 result_queue = queue.Queue()
@@ -508,6 +509,32 @@ def main_script():
             pause_event.wait()  # 暂停
             # 默认是站在赛丽亚房间
 
+            # 识别当前职业
+            kbu.do_press('k')
+            time.sleep(1)
+            skill_panel_img = capturer.capture()
+            skill_panel_img = skill_panel_img[360:450, 700:920]
+            skill_panel_img = cv2.cvtColor(skill_panel_img, cv2.COLOR_BGRA2GRAY)
+            for class_code, icon in class_icon_map.items():
+                matches = match_template(skill_panel_img, icon, threshold=0.85)
+                if len(matches) > 0:
+                    logger.info(f"当前职业编号是是: {class_code}")
+                    for job in SubClass:
+                        code = job.code
+                        if code == class_code:
+                            print("识别当前职业是 " + job.name)
+
+                            # 从role_list中找到对应的角色配置
+                            for cc in role_list:
+                                if cc.sub_class == job:
+                                    print(f"从角色配置中找到对应的角色配置,{cc.no}-{cc.name}")
+                                    role = cc
+                            break
+                    break
+            time.sleep(0.5)
+            kbu.do_press(Key.esc)
+            time.sleep(0.5)
+
             # 获取技能栏截图
             skill_images = get_skill_initial_images(capturer.capture())
 
@@ -689,7 +716,7 @@ def main_script():
                     if not boss_appeared:
                         boss_appeared = True
                     logger.info(f"出现boss了")
-                    
+
                 if cv_det_task:
                     cv_det = cv_det_task.result()
                     if cv_det and cv_det["death"]:

@@ -39,7 +39,7 @@ def match_template(image, template, threshold=0.8):
     return matches
 
 
-def match_template_by_roi(image, roi_xywh, template, threshold=0.8):
+def match_template_by_roi(image, roi_xywh: tuple, template, threshold=0.8):
     """
     返回匹配矩形的左上角,右下角坐标,可能有多个矩形
     [((x1,y1),(x2,y2))]

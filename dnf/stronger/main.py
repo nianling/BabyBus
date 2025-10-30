@@ -66,8 +66,9 @@ from dnf.stronger.player import (
     close_new_day_dialog,
     detect_aolakou,
 )
+from dnf.stronger.role_config import SubClass
 from logger_config import logger
-from role_list import get_role_config_list
+from dnf.stronger.role_list import get_role_config_list
 from utils import keyboard_utils as kbu
 from utils import mouse_utils as mu
 from utils import window_utils as window_utils
@@ -77,12 +78,13 @@ from utils.keyboard_move_controller import MovementController
 from utils.utilities import plot_one_box
 from utils.window_utils import WindowCapture
 from dnf.stronger.path_finder import PathFinder
-from utils.utilities import match_template_by_roi
+from utils.utilities import match_template_by_roi, match_template
 from utils.mail_sender import EmailSender
 from dnf.mail_config import config as mail_config
 from dnf.stronger.object_detect import object_detection_cv
 from utils.utilities import hex_to_bgr
 from dnf.stronger.skill_util import get_skill_initial_images
+from dnf.stronger.role_config import class_icon_map
 
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
@@ -170,104 +172,104 @@ names = [
 ]
 
 name_colors = [
-  {
-    "name": "boss",
-    "id": 1,
-    "color": "#523294",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "card",
-    "id": 2,
-    "color": "#5b98c6",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "continue",
-    "id": 3,
-    "color": "#4c7a1d",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "door",
-    "id": 4,
-    "color": "#4398ef",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "gold",
-    "id": 5,
-    "color": "#f2cb53",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "hero",
-    "id": 6,
-    "color": "#fefe30",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "loot",
-    "id": 7,
-    "color": "#a8e898",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "menu",
-    "id": 8,
-    "color": "#268674",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "monster",
-    "id": 9,
-    "color": "#fcb5fc",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "elite-monster",
-    "id": 10,
-    "color": "#33ddff",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "shop",
-    "id": 11,
-    "color": "#c8b3cb",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "shop-mystery",
-    "id": 12,
-    "color": "#909950",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "sss",
-    "id": 13,
-    "color": "#b5b5b0",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "door-boss",
-    "id": 14,
-    "color": "#ea6a4b",
-    "type": "rectangle",
-    "attributes": []
-  }
+    {
+        "name": "boss",
+        "id": 1,
+        "color": "#523294",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "card",
+        "id": 2,
+        "color": "#5b98c6",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "continue",
+        "id": 3,
+        "color": "#4c7a1d",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "door",
+        "id": 4,
+        "color": "#4398ef",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "gold",
+        "id": 5,
+        "color": "#f2cb53",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "hero",
+        "id": 6,
+        "color": "#fefe30",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "loot",
+        "id": 7,
+        "color": "#a8e898",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "menu",
+        "id": 8,
+        "color": "#268674",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "monster",
+        "id": 9,
+        "color": "#fcb5fc",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "elite-monster",
+        "id": 10,
+        "color": "#33ddff",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "shop",
+        "id": 11,
+        "color": "#c8b3cb",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "shop-mystery",
+        "id": 12,
+        "color": "#909950",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "sss",
+        "id": 13,
+        "color": "#b5b5b0",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "door-boss",
+        "id": 14,
+        "color": "#ea6a4b",
+        "type": "rectangle",
+        "attributes": []
+    }
 ]
 name_colors = [hex_to_bgr(d['color']) for d in name_colors]
 
@@ -294,8 +296,6 @@ executor = SingleTaskThreadPool()
 img_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
 tool_executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 mail_sender = EmailSender(mail_config)  # 初始化邮件发送器
-
-
 
 # 创建一个队列，用于主线程和展示线程之间的通信
 result_queue = queue.Queue()
@@ -754,6 +754,31 @@ def main_script():
             # 获取技能栏截图
             skill_images = get_skill_initial_images(capturer.capture())
 
+            # 识别当前职业
+            kbu.do_press('k')
+            time.sleep(1)
+            skill_panel_img = capturer.capture()
+
+            for class_code, icon in class_icon_map.items():
+                matches = match_template(cv2.cvtColor(skill_panel_img, cv2.COLOR_BGRA2GRAY), icon, threshold=0.85)
+                if len(matches) > 0:
+                    logger.info(f"当前职业编号是是: {class_code}")
+                    for job in SubClass:
+                        code = job.code
+                        if code == class_code:
+                            print("识别当前职业是 " + job.name)
+
+                            # 从role_list中找到对应的角色配置
+                            for cc in role_list:
+                                if cc.sub_class == job:
+                                    print("从角色配置中找到对应的角色配置")
+                                    role = cc
+                            break
+                    break
+            time.sleep(0.5)
+            kbu.do_press(Key.esc)
+            time.sleep(0.5)
+
             if game_mode != 2:
                 # N 点第一个
                 logger.info("传送到风暴门口,选地图...")
@@ -944,7 +969,7 @@ def main_script():
 
                 # 截图
                 img0 = capturer.capture()
-                
+
                 # 识别
                 cv_det_task = None
                 if boss_appeared or in_boss_room or boss_door_appeared or game_mode == 2:
@@ -1013,7 +1038,7 @@ def main_script():
                         logger.info(f"出现boss了")
                         boss_appeared = True
                         in_boss_room = True
-                        
+
                 if cv_det_task:
                     cv_det = cv_det_task.result()
                     if cv_det and cv_det["death"]:
@@ -1677,19 +1702,19 @@ def main_script():
                             if (
                                     (door[0] <= material_box[0] <= hero_xywh[0] or door[0] >= material_box[0] >= hero_xywh[0])
                                     and (
-                                        (door[1] <= material_box[1] <= hero_xywh[1] and abs(material_box[0] - hero_xywh[0]) < 170)
-                                        or (door[1] >= material_box[1] >= hero_xywh[1] and abs(material_box[0] - hero_xywh[0]) < 170)
-                                        or (abs(door[1] - material_box[1]) < 100 and abs(door[1] - hero_xywh[1]) < 100 and abs(material_box[1] - hero_xywh[1]) < 100)
-                                    )
+                                    (door[1] <= material_box[1] <= hero_xywh[1] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                    or (door[1] >= material_box[1] >= hero_xywh[1] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                    or (abs(door[1] - material_box[1]) < 100 and abs(door[1] - hero_xywh[1]) < 100 and abs(material_box[1] - hero_xywh[1]) < 100)
+                            )
                             ):
                                 # logger.error(f"门:{door}, 材料：{material_box}， 角色：{hero_xywh}")
                                 door_is_near = True
                             elif (
                                     (door[1] <= material_box[1] <= hero_xywh[1] or door[1] >= material_box[1] >= hero_xywh[1])
                                     and (
-                                        (door[0] <= material_box[0] <= hero_xywh[0] and abs(material_box[0] - hero_xywh[0]) < 170)
-                                        or (door[0] >= material_box[0] >= hero_xywh[0] and abs(material_box[0] - hero_xywh[0]) < 170)
-                                        or (abs(door[0] - material_box[0]) < 100 and abs(door[0] - hero_xywh[0]) < 100 and abs(material_box[0] - hero_xywh[0]) < 100)
+                                            (door[0] <= material_box[0] <= hero_xywh[0] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                            or (door[0] >= material_box[0] >= hero_xywh[0] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                            or (abs(door[0] - material_box[0]) < 100 and abs(door[0] - hero_xywh[0]) < 100 and abs(material_box[0] - hero_xywh[0]) < 100)
                                     )
                             ):
                                 # logger.error(f"门:{door}, 材料：{material_box}， 角色：{hero_xywh}")
