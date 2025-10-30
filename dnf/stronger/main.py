@@ -733,10 +733,11 @@ def main_script():
         # 判断1+1是否能点
         if need_fight and game_mode == 2:
             mu.do_move_and_click(x + 767, y + 542)
-            time.sleep(0.1)
+            time.sleep(0.4)
             daily_1and1_clickable = detect_daily_1and1_clickable(capturer.capture())
-            time.sleep(0.1)
+            time.sleep(0.4)
             kbu.do_press(Key.esc)
+            time.sleep(0.2)
             if not daily_1and1_clickable:
                 logger.warning("1+1点不了,跳过...")
             need_fight = daily_1and1_clickable
