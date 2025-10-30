@@ -515,10 +515,13 @@ def main_script():
 
             # 识别当前职业
             kbu.do_press('k')
-            time.sleep(1)
+            time.sleep(2)
             skill_panel_img = capturer.capture()
             skill_panel_img = skill_panel_img[360:450, 700:920]
             skill_panel_img = cv2.cvtColor(skill_panel_img, cv2.COLOR_BGRA2GRAY)
+
+            # 从role_list中找到对应的角色配置
+            find_role_config = False
             for class_code, icon in class_icon_map.items():
                 matches = match_template(skill_panel_img, icon, threshold=0.85)
                 if len(matches) > 0:
@@ -526,20 +529,17 @@ def main_script():
                     for job in SubClass:
                         code = job.code
                         if code == class_code:
-                            print("识别当前职业是 " + job.name)
-
-                            # 从role_list中找到对应的角色配置
-                            find_role_config = False
+                            logger.info("识别当前职业是 " + job.name)
                             for cc in role_list:
                                 if cc.sub_class == job:
-                                    print(f"从角色配置中找到对应的角色配置,{cc.no}-{cc.name}")
+                                    logger.info(f"从角色配置中找到对应的角色配置,{cc.no}-{cc.name}")
                                     role = cc
                                     find_role_config = True
                                     break
                             if not find_role_config and role.sub_class_auto:
                                 role.height = BaseClass.get_base_class(job).height
                                 role.custom_priority_skills = skill_util.default_all_skills
-                                logger.debug("缺省配置角色，自动配置角色高度")
+                                logger.debug("缺省配置角色，自动配置角色高度和技能")
                             break
                     break
                 else:
@@ -554,6 +554,7 @@ def main_script():
             if calc_height:
                 logger.info(f"计算出的角色高度: {calc_height}，原高度：{role.height}")
                 role.height = calc_height
+                h_h = role.height
 
             # 获取技能栏截图
             skill_images = get_skill_initial_images(capturer.capture())
