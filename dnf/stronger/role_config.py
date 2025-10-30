@@ -142,8 +142,8 @@ class RoleConfig:
 
     name: str = field(metadata={"description": "角色名称"})
     no: int = field(metadata={"description": "序号"})
-    buffs: List[List[object]] = field(metadata={"description": "buff列表"})
-    candidate_hotkeys: List[object] = field(metadata={"description": "允许释放的快捷栏列表上的技能"})
+    buffs: Optional[List[List[object]]] = field(default_factory=list, metadata={"description": "buff列表"})
+    candidate_hotkeys: Optional[List[object]] = field(default_factory=list, metadata={"description": "允许释放的快捷栏列表上的技能"})
     custom_priority_skills: Optional[List[object]] = field(default_factory=list, metadata={"description": "自定义的技能列表"})
     height: int = field(default=180, metadata={"description": "身高，默认值为180"})
     fatigue_all: int = field(default=188, metadata={"description": "总疲劳值，默认值为188"})
@@ -155,7 +155,7 @@ class RoleConfig:
     powerful_skills: Optional[List[object]] = field(default_factory=list, metadata={"description": "强力技能列表"})
     white_map_level: int = field(default=2, metadata={"description": "白图等级，默认勇士，（0普通，1冒险，2勇士，依次类推）"})
     sub_class: Optional[SubClass] = field(default=None, metadata={"description": "职业"})
-    sub_class_auto: Optional[bool] = field(default=False, metadata={"description": "是否自动选择职业"})
+    sub_class_auto: Optional[bool] = field(default=True, metadata={"description": "是否自动选择职业"})
 
 
 class BaseClass:
