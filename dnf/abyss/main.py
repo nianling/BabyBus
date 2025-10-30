@@ -599,7 +599,6 @@ def main_script():
             exception_mail_notify_timer = threading.Timer(300, mail_sender.send_email, ("刷图异常提醒", "刷图异常提醒，长时间未动，及时介入处理。", mail_config.get("receiver")))
             exception_mail_notify_timer.start()
             logger.debug("启动刷图异常提醒定时器")
-
             # 先要等待地图加载
             time.sleep(1)
 
@@ -1348,13 +1347,14 @@ def main_script():
             # # 完成每日任务
             # finish_daily_challenge(x, y)
 
-            pause_event.wait()  # 暂停
-            # 转移材料到账号金库
-            transfer_materials_to_account_vault(x, y)
             # 收邮件
             if datetime.now().weekday() in dnf.receive_mail_days:
                 logger.info('日期匹配，今日触发收邮件')
                 receive_mail(capturer.capture(), x, y)
+
+            pause_event.wait()  # 暂停
+            # 转移材料到账号金库
+            transfer_materials_to_account_vault(x, y)
 
         pause_event.wait()  # 暂停
         # 准备重新选择角色

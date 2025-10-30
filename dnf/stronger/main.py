@@ -2070,13 +2070,14 @@ def main_script():
             # # 一键出售装备,给赛丽亚
             # sale_equipment_to_sailiya()
 
-            pause_event.wait()  # 暂停
-            # 转移材料到账号金库
-            transfer_materials_to_account_vault(x, y)
             # 收邮件
             if datetime.now().weekday() in dnf.receive_mail_days:
                 logger.info('日期匹配，今日触发收邮件')
                 receive_mail(capturer.capture(), x, y)
+
+            pause_event.wait()  # 暂停
+            # 转移材料到账号金库
+            transfer_materials_to_account_vault(x, y)
 
         pause_event.wait()  # 暂停
         # 准备重新选择角色
