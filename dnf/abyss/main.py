@@ -103,6 +103,9 @@ weights = os.path.join(config_.project_base_path, 'weights/abyss.pt')  # 模型�
 # <<<<<<<<<<<<<<<< 运行时相关的参数 <<<<<<<<<<<<<<<<
 
 #  >>>>>>>>>>>>>>>> 脚本所需要的变量 >>>>>>>>>>>>>>>>
+# 每秒最大处理帧数
+max_fps = 10
+
 # 游戏窗口位置
 x, y = 0, 0
 handle = -1
@@ -641,8 +644,15 @@ def main_script():
             die_time = 0
             delay_break = 0
 
-            # frame = 0
+            frame_time = time.time()
             while True:  # 循环打怪过图，过房间
+                # 限制处理速率
+                if max_fps:
+                    if time.time() - frame_time < 1.0 / max_fps:
+                        time.sleep(0.02)
+                        continue
+                    frame_time = time.time()
+
                 pause_event.wait()  # 暂停
 
                 # 截图
