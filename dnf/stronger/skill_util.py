@@ -19,6 +19,7 @@ from dnf.stronger.role_config import RoleConfig, Skill
 from utils import keyboard_utils as kbu
 import config as config_
 from utils.utilities import match_template
+from dnf.stronger.role_config import RoleConfig
 
 # x1, y1 = 527, 645
 # x2, y2 = 770, 712
@@ -71,6 +72,10 @@ skill_dict = {
     "h": (x1 + skill_width * 6, y1 + skill_height)
 }
 
+# 默认的所有技能
+default_all_skills = []
+for hot_key in skill_dict.keys():
+    default_all_skills.append(Skill(hot_key=hot_key, animation_time=0.5))
 
 # 计算给定图像 img 中亮度高于阈值127的像素的比例
 def score(img):
@@ -284,6 +289,11 @@ def get_available_skill_from_list_by_match(skills, img0, skill_images):
     :param skill_images:
     :return:
     """
+    if skills is None or len(skills) == 0:
+        # logger.debug("角色池配置-角色技能列表为空")
+        # todo 配置 随机 或者默认第一排第二排顺序 或者自定义默认顺序
+        skills = default_all_skills
+
     for s in skills:
         # logger.debug(f"CD判断:【{s}】")
         if isinstance(s, str) or isinstance(s, Key):
@@ -369,6 +379,7 @@ def get_skill_initial_images(full_image):
         _y = 534 + (28 + 3) * (index // 7)
         # 扣出技能格子图片
         skill_img = full_image[_y:_y + skill_height, _x:_x + skill_width]
+        # cv2.imwrite(f"skill_{index}.png", skill_img)
         # 灰度化
         skill_img = cv2.cvtColor(skill_img, cv2.COLOR_BGR2GRAY)
         empty_skill = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/empty_skill.png'), cv2.IMREAD_GRAYSCALE)
