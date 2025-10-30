@@ -39,10 +39,10 @@ class SubClass(Enum):
     阿修罗 = SubClassInfo('1-4', "阿修罗")
     剑影 = SubClassInfo('1-5', "剑影")
 
-    女气功 = SubClassInfo('1-1', "UNK")
-    女柔道 = SubClassInfo('1-2', "UNK")
-    女散打 = SubClassInfo('1-3', "UNK")
-    女毒王 = SubClassInfo('1-4', "UNK")
+    女气功 = SubClassInfo('2-1', "UNK")
+    女柔道 = SubClassInfo('2-2', "UNK")
+    女散打 = SubClassInfo('2-3', "UNK")
+    女毒王 = SubClassInfo('2-4', "UNK")
 
     剑宗 = SubClassInfo('3-1', "UNK")
     剑魔 = SubClassInfo('3-2', "UNK")
