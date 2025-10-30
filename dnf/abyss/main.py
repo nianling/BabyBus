@@ -1345,8 +1345,8 @@ def main_script():
             # 转移材料到账号金库
             transfer_materials_to_account_vault(x, y)
             # 收邮件
-            if datetime.now().weekday() == 2:
-                logger.info('收邮件')
+            if datetime.now().weekday() in dnf.receive_mail_days:
+                logger.info('日期匹配，今日触发收邮件')
                 receive_mail(capturer.capture(), x, y)
 
         pause_event.wait()  # 暂停

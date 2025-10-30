@@ -55,3 +55,6 @@ skill_hotkeys = [
     Key.tab,
     "h",
 ]
+
+# 配置每周几领取邮件，0周一，1周二，2周三，3周四，4周五，5周六，6周日
+receive_mail_days = [3, 6]
