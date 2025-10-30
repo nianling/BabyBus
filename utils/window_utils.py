@@ -8,7 +8,33 @@ import pyautogui
 import win32con
 import win32gui
 import win32ui
+import win32process
+import win32api
 
+
+def kill_process_by_hwnd(hwnd):
+    """
+    根据窗口句柄终止对应的进程
+    :param hwnd: 窗口句柄 (int)
+    """
+    if not win32gui.IsWindow(hwnd):
+        return False
+
+    # 获取进程 ID
+    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+
+    try:
+        # 打开进程
+        handle = win32api.OpenProcess(win32con.PROCESS_TERMINATE, False, pid)
+        # 终止进程
+        win32api.TerminateProcess(handle, 0)
+        # 关闭句柄
+        win32api.CloseHandle(handle)
+        print(f"进程 (PID={pid}) 已被终止")
+        return True
+    except Exception as e:
+        print(f"终止进程失败: {e}")
+        return False
 
 def get_window_handle(window_title):
     """

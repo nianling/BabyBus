@@ -1434,6 +1434,8 @@ if not stop_be_pressed and quit_game_after_finish:
     logger.info("正在退出游戏...")
     clik_to_quit_game(handle, x, y)
     time.sleep(5)
+    window_utils.kill_process_by_hwnd(handle)  # 如果没退出，就强杀掉进程
+    time.sleep(5)
 
 logger.info("python主线程已停止.....")
 
