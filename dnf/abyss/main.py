@@ -54,6 +54,7 @@ from dnf.stronger.player import (
     receive_mail, match_and_click,
     close_new_day_dialog,
     detect_aolakou,
+    calc_role_height
 )
 from dnf.stronger.skill_util import get_skill_initial_images
 from dnf.stronger.logger_config import logger
@@ -543,11 +544,16 @@ def main_script():
                     break
                 else:
                     logger.debug("未识别当前职业!!")
-            logger.debug(f"最终生效职业是：{role.no}-{role.name}-{role.height}")
+            logger.debug(f"最终生效职业是：序号：{role.no}-名称：{role.name}-高度：{role.height}")
             logger.debug(f"{role}")
             time.sleep(0.5)
             kbu.do_press(Key.esc)
             time.sleep(0.5)
+
+            calc_height = calc_role_height(capturer.capture(), x, y)
+            if calc_height:
+                logger.info(f"计算出的角色高度: {calc_height}，原高度：{role.height}")
+                role.height = calc_height
 
             # 获取技能栏截图
             skill_images = get_skill_initial_images(capturer.capture())
