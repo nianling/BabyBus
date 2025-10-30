@@ -155,12 +155,14 @@ class RoleConfig:
     powerful_skills: Optional[List[object]] = field(default_factory=list, metadata={"description": "强力技能列表"})
     white_map_level: int = field(default=2, metadata={"description": "白图等级，默认勇士，（0普通，1冒险，2勇士，依次类推）"})
     sub_class: Optional[SubClass] = field(default=None, metadata={"description": "职业"})
+    sub_class_auto: Optional[bool] = field(default=False, metadata={"description": "是否自动选择职业"})
 
 
 class BaseClass:
     """BaseClass.男鬼剑.剑魂"""
 
     class 男鬼剑:
+        height = 160
         剑魂 = SubClass.剑魂
         狂战士 = SubClass.狂战士
         鬼泣 = SubClass.鬼泣
@@ -168,12 +170,14 @@ class BaseClass:
         剑影 = SubClass.剑影
 
     class 女格斗:
+        height = 141
         女气功 = SubClass.女气功
         女柔道 = SubClass.女柔道
         女散打 = SubClass.女散打
         女毒王 = SubClass.女毒王
 
     class 女鬼剑:
+        height = 149
         剑宗 = SubClass.剑宗
         剑魔 = SubClass.剑魔
         剑帝 = SubClass.剑帝
@@ -181,12 +185,14 @@ class BaseClass:
         刃影 = SubClass.刃影
 
     class 男格斗:
+        height = 138
         男气功 = SubClass.男气功
         男柔道 = SubClass.男柔道
         男散打 = SubClass.男散打
         男街霸 = SubClass.男街霸
 
     class 男枪手:
+        height = 170
         男漫游 = SubClass.男漫游
         男大枪 = SubClass.男大枪
         男弹药 = SubClass.男弹药
@@ -194,6 +200,7 @@ class BaseClass:
         合金战士 = SubClass.合金战士
 
     class 女枪手:
+        height = 158
         女漫游 = SubClass.女漫游
         女大枪 = SubClass.女大枪
         女弹药 = SubClass.女弹药
@@ -201,6 +208,7 @@ class BaseClass:
         奶枪 = SubClass.奶枪
 
     class 男法师:
+        height = 141
         冰结师 = SubClass.冰结师
         魔皇 = SubClass.魔皇
         风法 = SubClass.风法
@@ -208,6 +216,7 @@ class BaseClass:
         次元 = SubClass.次元
 
     class 女法师:
+        height = 127
         元素 = SubClass.元素
         战法 = SubClass.战法
         小魔女 = SubClass.小魔女
@@ -215,45 +224,53 @@ class BaseClass:
         召唤 = SubClass.召唤
 
     class 男圣职:
+        height = 164
         奶爸 = SubClass.奶爸
         蓝拳 = SubClass.蓝拳
         驱魔 = SubClass.驱魔
         复仇 = SubClass.复仇
 
     class 女圣职:
+        height = 151
         奶妈 = SubClass.奶妈
         异端审判者 = SubClass.异端审判者
         巫女 = SubClass.巫女
         诱魔者 = SubClass.诱魔者
 
     class 暗夜:
+        height = 155
         忍者 = SubClass.忍者
         刺客 = SubClass.刺客
         影舞者 = SubClass.影舞者
         死灵 = SubClass.死灵
 
     class 守护者:
+        height = 138
         帕拉丁 = SubClass.帕拉丁
         精灵骑士 = SubClass.精灵骑士
         龙神 = SubClass.龙神
         混沌魔灵 = SubClass.混沌魔灵
 
     class 魔枪士:
+        height = 157
         赵云 = SubClass.赵云
         关羽 = SubClass.关羽
         光枪 = SubClass.光枪
         暗枪 = SubClass.暗枪
 
     class 枪剑士:
+        height = 164
         战线佣兵 = SubClass.战线佣兵
         特工 = SubClass.特工
         暗刃 = SubClass.暗刃
         能源专家 = SubClass.能源专家
 
     class 外传:
+        height = 160
         黑暗武士 = SubClass.黑暗武士
 
     class 弓箭手:
+        height = 138
         旅人 = SubClass.旅人
         奶弓 = SubClass.奶弓
         妖护使 = SubClass.妖护使
@@ -268,6 +285,21 @@ class BaseClass:
     #         return getattr(base, sub_name, None)
     #     return None
 
+    @classmethod
+    def get_base_class(cls, subclass_enum: SubClass):
+        """
+        根据 SubClass 枚举对象，返回它所属的 BaseClass 子类（如 BaseClass.男鬼剑）
+        找不到，返回 None
+        """
+        for attr_name in dir(BaseClass):
+            attr = getattr(BaseClass, attr_name)
+            # 筛选 BaseClass 的内部类（排除内置属性和方法）
+            if isinstance(attr, type) and attr.__module__ == BaseClass.__module__:
+                # 检查该内部类是否包含这个枚举成员
+                for field_name in dir(attr):
+                    if getattr(attr, field_name, None) is subclass_enum:
+                        return attr  # 返回这个“基类”，如 BaseClass.男鬼剑
+        return None
 
 class_icon_map = {}
 folder_path = f'{config_.project_base_path}/assets/img/game/class'
@@ -286,6 +318,8 @@ if __name__ == '__main__':
     print(BaseClass.男鬼剑.剑魂.name)
     print(BaseClass.男鬼剑.剑魂.code)
     print(BaseClass.女格斗.女散打.code)
+
+    print(BaseClass.get_base_class(SubClass.剑魂).height)
 
     class_code = '16-1'
     for job in SubClass:

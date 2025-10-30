@@ -66,7 +66,7 @@ from dnf.stronger.player import (
     close_new_day_dialog,
     detect_aolakou,
 )
-from dnf.stronger.role_config import SubClass
+from dnf.stronger.role_config import SubClass, BaseClass
 from logger_config import logger
 from dnf.stronger.role_list import get_role_config_list
 from utils import keyboard_utils as kbu
@@ -758,9 +758,10 @@ def main_script():
             kbu.do_press('k')
             time.sleep(1)
             skill_panel_img = capturer.capture()
-
+            skill_panel_img = skill_panel_img[360:450, 700:920]
+            skill_panel_img = cv2.cvtColor(skill_panel_img, cv2.COLOR_BGRA2GRAY)
             for class_code, icon in class_icon_map.items():
-                matches = match_template(cv2.cvtColor(skill_panel_img, cv2.COLOR_BGRA2GRAY), icon, threshold=0.85)
+                matches = match_template(skill_panel_img, icon, threshold=0.85)
                 if len(matches) > 0:
                     logger.info(f"当前职业编号是是: {class_code}")
                     for job in SubClass:
@@ -769,12 +770,23 @@ def main_script():
                             print("识别当前职业是 " + job.name)
 
                             # 从role_list中找到对应的角色配置
+                            find_role_config = False
                             for cc in role_list:
                                 if cc.sub_class == job:
-                                    print("从角色配置中找到对应的角色配置")
+                                    print(f"从角色配置中找到对应的角色配置,{cc.no}-{cc.name}")
                                     role = cc
+                                    find_role_config = True
+                                    break
+                            if not find_role_config and role.sub_class_auto:
+                                role.height = BaseClass.get_base_class(job).height
+                                role.custom_priority_skills = skill_util.default_all_skills
+                                logger.debug("缺省配置角色，自动配置角色高度")
                             break
                     break
+                else:
+                    logger.debug("未识别当前职业!!")
+            logger.debug(f"最终生效职业是：{role.no}-{role.name}-{role.height}")
+            logger.debug(f"{role}")
             time.sleep(0.5)
             kbu.do_press(Key.esc)
             time.sleep(0.5)

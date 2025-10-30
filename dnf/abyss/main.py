@@ -69,7 +69,7 @@ from utils.utilities import match_template_by_roi, match_template
 from utils.mail_sender import EmailSender
 from dnf.mail_config import config as mail_config
 from dnf.stronger.object_detect import object_detection_cv
-from dnf.stronger.role_config import class_icon_map
+from dnf.stronger.role_config import class_icon_map, BaseClass
 from dnf.stronger.role_config import SubClass
 
 temp = pathlib.PosixPath
@@ -528,12 +528,23 @@ def main_script():
                             print("识别当前职业是 " + job.name)
 
                             # 从role_list中找到对应的角色配置
+                            find_role_config = False
                             for cc in role_list:
                                 if cc.sub_class == job:
                                     print(f"从角色配置中找到对应的角色配置,{cc.no}-{cc.name}")
                                     role = cc
+                                    find_role_config = True
+                                    break
+                            if not find_role_config and role.sub_class_auto:
+                                role.height = BaseClass.get_base_class(job).height
+                                role.custom_priority_skills = skill_util.default_all_skills
+                                logger.debug("缺省配置角色，自动配置角色高度")
                             break
                     break
+                else:
+                    logger.debug("未识别当前职业!!")
+            logger.debug(f"最终生效职业是：{role.no}-{role.name}-{role.height}")
+            logger.debug(f"{role}")
             time.sleep(0.5)
             kbu.do_press(Key.esc)
             time.sleep(0.5)
