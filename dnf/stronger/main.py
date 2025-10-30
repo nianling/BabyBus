@@ -861,7 +861,7 @@ def main_script():
             pause_event.wait()  # 暂停
             try:
                 t1 = time.time()
-                time.sleep(2)
+                time.sleep(2)  # 防止太快
                 load_map_task = tool_executor.submit(minimap_analyse, capturer)
                 load_map_success = load_map_task.result(timeout=5)
                 if load_map_success:
@@ -1807,7 +1807,7 @@ def main_script():
                     mover._release_all_keys()
 
                     aolakou = False
-                    if game_mode == 2:
+                    if game_mode == 2 or game_mode == 1:
                         aolakou = detect_aolakou(results[0].orig_img)
                     # todo 前多少角色买奥拉扣
                     if aolakou and role.no <= 0:
