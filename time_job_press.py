@@ -47,13 +47,13 @@ def prepare_start():
     time.sleep(120)
     print("游戏启动完毕")
 
-    for i in range(6):
+    for i in range(10):
         kbu.do_press(Key.up)
-        time.sleep(0.2)
+        time.sleep(0.3)
 
-    for i in range(6):
+    for i in range(10):
         kbu.do_press(Key.left)
-        time.sleep(0.2)
+        time.sleep(0.3)
 
     kbu.do_press(Key.space)
     time.sleep(10)

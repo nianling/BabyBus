@@ -15,6 +15,7 @@ from datetime import datetime
 import queue
 import traceback
 import concurrent.futures
+import copy
 
 import cv2
 import keyboard as kboard
@@ -64,10 +65,11 @@ from dnf.stronger.player import (
     do_recognize_fatigue,
     receive_mail, match_and_click,
     close_new_day_dialog,
-    detect_aolakou,
+    detect_aolakou, calc_role_height,
 )
+from dnf.stronger.role_config import SubClass, BaseClass
 from logger_config import logger
-from role_list import get_role_config_list
+from dnf.stronger.role_list import get_role_config_list
 from utils import keyboard_utils as kbu
 from utils import mouse_utils as mu
 from utils import window_utils as window_utils
@@ -77,12 +79,13 @@ from utils.keyboard_move_controller import MovementController
 from utils.utilities import plot_one_box
 from utils.window_utils import WindowCapture
 from dnf.stronger.path_finder import PathFinder
-from utils.utilities import match_template_by_roi
+from utils.utilities import match_template_by_roi, match_template
 from utils.mail_sender import EmailSender
 from dnf.mail_config import config as mail_config
 from dnf.stronger.object_detect import object_detection_cv
 from utils.utilities import hex_to_bgr
 from dnf.stronger.skill_util import get_skill_initial_images
+from dnf.stronger.role_config import class_icon_map
 
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
@@ -170,104 +173,104 @@ names = [
 ]
 
 name_colors = [
-  {
-    "name": "boss",
-    "id": 1,
-    "color": "#523294",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "card",
-    "id": 2,
-    "color": "#5b98c6",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "continue",
-    "id": 3,
-    "color": "#4c7a1d",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "door",
-    "id": 4,
-    "color": "#4398ef",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "gold",
-    "id": 5,
-    "color": "#f2cb53",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "hero",
-    "id": 6,
-    "color": "#fefe30",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "loot",
-    "id": 7,
-    "color": "#a8e898",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "menu",
-    "id": 8,
-    "color": "#268674",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "monster",
-    "id": 9,
-    "color": "#fcb5fc",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "elite-monster",
-    "id": 10,
-    "color": "#33ddff",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "shop",
-    "id": 11,
-    "color": "#c8b3cb",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "shop-mystery",
-    "id": 12,
-    "color": "#909950",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "sss",
-    "id": 13,
-    "color": "#b5b5b0",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "door-boss",
-    "id": 14,
-    "color": "#ea6a4b",
-    "type": "rectangle",
-    "attributes": []
-  }
+    {
+        "name": "boss",
+        "id": 1,
+        "color": "#523294",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "card",
+        "id": 2,
+        "color": "#5b98c6",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "continue",
+        "id": 3,
+        "color": "#4c7a1d",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "door",
+        "id": 4,
+        "color": "#4398ef",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "gold",
+        "id": 5,
+        "color": "#f2cb53",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "hero",
+        "id": 6,
+        "color": "#fefe30",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "loot",
+        "id": 7,
+        "color": "#a8e898",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "menu",
+        "id": 8,
+        "color": "#268674",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "monster",
+        "id": 9,
+        "color": "#fcb5fc",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "elite-monster",
+        "id": 10,
+        "color": "#33ddff",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "shop",
+        "id": 11,
+        "color": "#c8b3cb",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "shop-mystery",
+        "id": 12,
+        "color": "#909950",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "sss",
+        "id": 13,
+        "color": "#b5b5b0",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "door-boss",
+        "id": 14,
+        "color": "#ea6a4b",
+        "type": "rectangle",
+        "attributes": []
+    }
 ]
 name_colors = [hex_to_bgr(d['color']) for d in name_colors]
 
@@ -294,8 +297,6 @@ executor = SingleTaskThreadPool()
 img_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
 tool_executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 mail_sender = EmailSender(mail_config)  # 初始化邮件发送器
-
-
 
 # 创建一个队列，用于主线程和展示线程之间的通信
 result_queue = queue.Queue()
@@ -665,7 +666,7 @@ def main_script():
     for i in range(len(role_list)):
         pause_event.wait()  # 暂停
 
-        role = role_list[i]
+        role = copy.deepcopy(role_list[i])
         # 判断,从指定的角色开始,其余的跳过
         if first_role_no != -1 and (i + 1) < first_role_no:
             logger.warning(f'[跳过]-【{i + 1}】[{role.name}]...')
@@ -733,10 +734,11 @@ def main_script():
         # 判断1+1是否能点
         if need_fight and game_mode == 2:
             mu.do_move_and_click(x + 767, y + 542)
-            time.sleep(0.1)
+            time.sleep(0.4)
             daily_1and1_clickable = detect_daily_1and1_clickable(capturer.capture())
-            time.sleep(0.1)
+            time.sleep(0.4)
             kbu.do_press(Key.esc)
+            time.sleep(0.2)
             if not daily_1and1_clickable:
                 logger.warning("1+1点不了,跳过...")
             need_fight = daily_1and1_clickable
@@ -750,6 +752,53 @@ def main_script():
 
             pause_event.wait()  # 暂停
             # 默认是站在赛丽亚房间
+
+            # 识别当前职业
+            kbu.do_press('k')
+            time.sleep(2)
+            skill_panel_img = capturer.capture()
+            skill_panel_img = skill_panel_img[360:450, 700:920]
+            skill_panel_img = cv2.cvtColor(skill_panel_img, cv2.COLOR_BGRA2GRAY)
+
+            # 从role_list中找到对应的角色配置
+            find_role_config = False
+            for class_code, icon in class_icon_map.items():
+                matches = match_template(skill_panel_img, icon, threshold=0.85)
+                if len(matches) > 0:
+                    logger.info(f"当前职业编号是是: {class_code}")
+                    for job in SubClass:
+                        code = job.code
+                        if code == class_code:
+                            logger.info("识别当前职业是 " + job.name)
+                            for cc in role_list:
+                                if cc.sub_class == job:
+                                    logger.info(f"从角色配置池中找到对应的角色配置,{cc.no}-{cc.sub_class}-{cc.name}")
+                                    role_bak = role
+                                    role = cc
+                                    role.height = role_bak.height
+                                    role.fatigue_reserved = role_bak.fatigue_reserved
+                                    role.fatigue_all = role_bak.fatigue_all
+                                    find_role_config = True
+                                    break
+                            if not find_role_config and role.sub_class_auto:
+                                logger.debug("未找到对应职业，缺省配置角色，并且允许自动配置角色高度和技能")
+                                role.height = BaseClass.get_base_class(job).height
+                                role.custom_priority_skills = skill_util.default_all_skills
+                            break
+                    break
+                else:
+                    logger.debug("未识别当前职业!!")
+            logger.debug(f"最终生效职业是：序号：{role.no}-名称：{role.name}-高度：{role.height}")
+            logger.debug(f"{role}")
+            time.sleep(0.5)
+            kbu.do_press(Key.esc)
+            time.sleep(0.5)
+
+            calc_height = calc_role_height(capturer.capture(), x, y)
+            if calc_height:
+                logger.info(f"计算出的角色高度: {calc_height}，原高度：{role.height}")
+                role.height = calc_height
+                hero_height = role.height
 
             # 获取技能栏截图
             skill_images = get_skill_initial_images(capturer.capture())
@@ -818,7 +867,7 @@ def main_script():
             pause_event.wait()  # 暂停
             try:
                 t1 = time.time()
-                time.sleep(2)
+                time.sleep(2)  # 防止太快
                 load_map_task = tool_executor.submit(minimap_analyse, capturer)
                 load_map_success = load_map_task.result(timeout=5)
                 if load_map_success:
@@ -944,7 +993,7 @@ def main_script():
 
                 # 截图
                 img0 = capturer.capture()
-                
+
                 # 识别
                 cv_det_task = None
                 if boss_appeared or in_boss_room or boss_door_appeared or game_mode == 2:
@@ -1013,7 +1062,7 @@ def main_script():
                         logger.info(f"出现boss了")
                         boss_appeared = True
                         in_boss_room = True
-                        
+
                 if cv_det_task:
                     cv_det = cv_det_task.result()
                     if cv_det and cv_det["death"]:
@@ -1677,19 +1726,19 @@ def main_script():
                             if (
                                     (door[0] <= material_box[0] <= hero_xywh[0] or door[0] >= material_box[0] >= hero_xywh[0])
                                     and (
-                                        (door[1] <= material_box[1] <= hero_xywh[1] and abs(material_box[0] - hero_xywh[0]) < 170)
-                                        or (door[1] >= material_box[1] >= hero_xywh[1] and abs(material_box[0] - hero_xywh[0]) < 170)
-                                        or (abs(door[1] - material_box[1]) < 100 and abs(door[1] - hero_xywh[1]) < 100 and abs(material_box[1] - hero_xywh[1]) < 100)
-                                    )
+                                    (door[1] <= material_box[1] <= hero_xywh[1] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                    or (door[1] >= material_box[1] >= hero_xywh[1] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                    or (abs(door[1] - material_box[1]) < 100 and abs(door[1] - hero_xywh[1]) < 100 and abs(material_box[1] - hero_xywh[1]) < 100)
+                            )
                             ):
                                 # logger.error(f"门:{door}, 材料：{material_box}， 角色：{hero_xywh}")
                                 door_is_near = True
                             elif (
                                     (door[1] <= material_box[1] <= hero_xywh[1] or door[1] >= material_box[1] >= hero_xywh[1])
                                     and (
-                                        (door[0] <= material_box[0] <= hero_xywh[0] and abs(material_box[0] - hero_xywh[0]) < 170)
-                                        or (door[0] >= material_box[0] >= hero_xywh[0] and abs(material_box[0] - hero_xywh[0]) < 170)
-                                        or (abs(door[0] - material_box[0]) < 100 and abs(door[0] - hero_xywh[0]) < 100 and abs(material_box[0] - hero_xywh[0]) < 100)
+                                            (door[0] <= material_box[0] <= hero_xywh[0] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                            or (door[0] >= material_box[0] >= hero_xywh[0] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                            or (abs(door[0] - material_box[0]) < 100 and abs(door[0] - hero_xywh[0]) < 100 and abs(material_box[0] - hero_xywh[0]) < 100)
                                     )
                             ):
                                 # logger.error(f"门:{door}, 材料：{material_box}， 角色：{hero_xywh}")
@@ -1764,7 +1813,7 @@ def main_script():
                     mover._release_all_keys()
 
                     aolakou = False
-                    if game_mode == 2:
+                    if game_mode == 2 or game_mode == 1:
                         aolakou = detect_aolakou(results[0].orig_img)
                     # todo 前多少角色买奥拉扣
                     if aolakou and role.no <= 0:
@@ -2027,13 +2076,14 @@ def main_script():
             # # 一键出售装备,给赛丽亚
             # sale_equipment_to_sailiya()
 
+            # 收邮件
+            if datetime.now().weekday() in dnf.receive_mail_days:
+                logger.info('日期匹配，今日触发收邮件')
+                receive_mail(capturer.capture(), x, y)
+
             pause_event.wait()  # 暂停
             # 转移材料到账号金库
             transfer_materials_to_account_vault(x, y)
-            # 收邮件
-            if datetime.now().weekday() == 2:
-                logger.info('收邮件')
-                receive_mail(capturer.capture(), x, y)
 
         pause_event.wait()  # 暂停
         # 准备重新选择角色
@@ -2120,6 +2170,8 @@ logger.info(f'总计耗时: {(time_delta.total_seconds() / 60):.1f} 分钟')
 if not stop_be_pressed and quit_game_after_finish:
     logger.info("正在退出游戏...")
     clik_to_quit_game(handle, x, y)
+    time.sleep(5)
+    window_utils.kill_process_by_hwnd(handle)  # 如果没退出，就强杀掉进程
     time.sleep(5)
 
 logger.info("python主线程已停止.....")

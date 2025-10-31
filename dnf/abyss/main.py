@@ -13,6 +13,7 @@ import threading
 import time
 from datetime import datetime
 import concurrent.futures
+import copy
 
 import cv2
 import keyboard as kboard
@@ -54,9 +55,10 @@ from dnf.stronger.player import (
     receive_mail, match_and_click,
     close_new_day_dialog,
     detect_aolakou,
+    calc_role_height
 )
 from dnf.stronger.skill_util import get_skill_initial_images
-from logger_config import logger
+from dnf.stronger.logger_config import logger
 from dnf.stronger.role_list import get_role_config_list
 from utils import keyboard_utils as kbu
 from utils import mouse_utils as mu
@@ -65,10 +67,12 @@ from utils.custom_thread_pool_excutor import SingleTaskThreadPool
 from utils.keyboard_move_controller import MovementController
 from utils.utilities import plot_one_box
 from utils.window_utils import WindowCapture
-from utils.utilities import match_template_by_roi
+from utils.utilities import match_template_by_roi, match_template
 from utils.mail_sender import EmailSender
 from dnf.mail_config import config as mail_config
 from dnf.stronger.object_detect import object_detection_cv
+from dnf.stronger.role_config import class_icon_map, BaseClass
+from dnf.stronger.role_config import SubClass
 
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
@@ -101,6 +105,9 @@ weights = os.path.join(config_.project_base_path, 'weights/abyss.pt')  # 模型�
 # <<<<<<<<<<<<<<<< 运行时相关的参数 <<<<<<<<<<<<<<<<
 
 #  >>>>>>>>>>>>>>>> 脚本所需要的变量 >>>>>>>>>>>>>>>>
+# 每秒最大处理帧数
+max_fps = 10
+
 # 游戏窗口位置
 x, y = 0, 0
 handle = -1
@@ -172,7 +179,6 @@ executor = SingleTaskThreadPool()
 img_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
 tool_executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 mail_sender = EmailSender(mail_config)  # 初始化邮件发送器
-
 
 # 创建一个队列，用于主线程和展示线程之间的通信
 result_queue = queue.Queue()
@@ -454,7 +460,7 @@ def main_script():
     for i in range(len(role_list)):
         pause_event.wait()  # 暂停
 
-        role = role_list[i]
+        role = copy.deepcopy(role_list[i])
         # 判断,从指定的角色开始,其余的跳过
         if first_role_no != -1 and (i + 1) < first_role_no:
             logger.info(f'[跳过]-【{i + 1}】[{role.name}]...')
@@ -508,6 +514,53 @@ def main_script():
             pause_event.wait()  # 暂停
             # 默认是站在赛丽亚房间
 
+            # 识别当前职业
+            kbu.do_press('k')
+            time.sleep(2)
+            skill_panel_img = capturer.capture()
+            skill_panel_img = skill_panel_img[360:450, 700:920]
+            skill_panel_img = cv2.cvtColor(skill_panel_img, cv2.COLOR_BGRA2GRAY)
+
+            # 从role_list中找到对应的角色配置
+            find_role_config = False
+            for class_code, icon in class_icon_map.items():
+                matches = match_template(skill_panel_img, icon, threshold=0.85)
+                if len(matches) > 0:
+                    logger.info(f"当前职业编号是是: {class_code}")
+                    for job in SubClass:
+                        code = job.code
+                        if code == class_code:
+                            logger.info("识别当前职业是 " + job.name)
+                            for cc in role_list:
+                                if cc.sub_class == job:
+                                    logger.info(f"从角色配置池中找到对应的角色配置,{cc.no}-{cc.sub_class}-{cc.name}")
+                                    role_bak = role
+                                    role = cc
+                                    role.height = role_bak.height
+                                    role.fatigue_reserved = role_bak.fatigue_reserved
+                                    role.fatigue_all = role_bak.fatigue_all
+                                    find_role_config = True
+                                    break
+                            if not find_role_config and role.sub_class_auto:
+                                logger.debug("未找到对应职业，缺省配置角色，并且允许自动配置角色高度和技能")
+                                role.height = BaseClass.get_base_class(job).height
+                                role.custom_priority_skills = skill_util.default_all_skills
+                            break
+                    break
+                else:
+                    logger.debug("未识别当前职业!!")
+            logger.debug(f"最终生效职业是：序号：{role.no}-名称：{role.name}-高度：{role.height}")
+            logger.debug(f"{role}")
+            time.sleep(0.5)
+            kbu.do_press(Key.esc)
+            time.sleep(0.5)
+
+            calc_height = calc_role_height(capturer.capture(), x, y)
+            if calc_height:
+                logger.info(f"计算出的角色高度: {calc_height}，原高度：{role.height}")
+                role.height = calc_height
+                h_h = role.height
+
             # 获取技能栏截图
             skill_images = get_skill_initial_images(capturer.capture())
 
@@ -551,7 +604,6 @@ def main_script():
             exception_mail_notify_timer = threading.Timer(300, mail_sender.send_email, ("刷图异常提醒", "刷图异常提醒，长时间未动，及时介入处理。", mail_config.get("receiver")))
             exception_mail_notify_timer.start()
             logger.debug("启动刷图异常提醒定时器")
-
             # 先要等待地图加载
             time.sleep(1)
 
@@ -614,8 +666,15 @@ def main_script():
             die_time = 0
             delay_break = 0
 
-            # frame = 0
+            frame_time = time.time()
             while True:  # 循环打怪过图，过房间
+                # 限制处理速率
+                if max_fps:
+                    if time.time() - frame_time < 1.0 / max_fps:
+                        time.sleep(0.02)
+                        continue
+                    frame_time = time.time()
+
                 pause_event.wait()  # 暂停
 
                 # 截图
@@ -689,7 +748,7 @@ def main_script():
                     if not boss_appeared:
                         boss_appeared = True
                     logger.info(f"出现boss了")
-                    
+
                 if cv_det_task:
                     cv_det = cv_det_task.result()
                     if cv_det and cv_det["death"]:
@@ -1293,13 +1352,14 @@ def main_script():
             # # 完成每日任务
             # finish_daily_challenge(x, y)
 
+            # 收邮件
+            if datetime.now().weekday() in dnf.receive_mail_days:
+                logger.info('日期匹配，今日触发收邮件')
+                receive_mail(capturer.capture(), x, y)
+
             pause_event.wait()  # 暂停
             # 转移材料到账号金库
             transfer_materials_to_account_vault(x, y)
-            # 收邮件
-            if datetime.now().weekday() == 2:
-                logger.info('收邮件')
-                receive_mail(capturer.capture(), x, y)
 
         pause_event.wait()  # 暂停
         # 准备重新选择角色
@@ -1378,6 +1438,8 @@ logger.info(f'总计耗时: {(time_delta.total_seconds() / 60):.1f} 分钟')
 if not stop_be_pressed and quit_game_after_finish:
     logger.info("正在退出游戏...")
     clik_to_quit_game(handle, x, y)
+    time.sleep(5)
+    window_utils.kill_process_by_hwnd(handle)  # 如果没退出，就强杀掉进程
     time.sleep(5)
 
 logger.info("python主线程已停止.....")
