@@ -155,7 +155,7 @@ class RoleConfig:
     powerful_skills: Optional[List[object]] = field(default_factory=list, metadata={"description": "强力技能列表"})
     white_map_level: int = field(default=2, metadata={"description": "白图等级，默认勇士，（0普通，1冒险，2勇士，依次类推）"})
     sub_class: Optional[SubClass] = field(default=None, metadata={"description": "职业"})
-    sub_class_auto: Optional[bool] = field(default=True, metadata={"description": "是否自动选择职业"})
+    sub_class_auto: Optional[bool] = field(default=False, metadata={"description": "是否自动选择职业"})
 
 
 class BaseClass:

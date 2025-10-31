@@ -13,6 +13,7 @@ import threading
 import time
 from datetime import datetime
 import concurrent.futures
+import copy
 
 import cv2
 import keyboard as kboard
@@ -459,7 +460,7 @@ def main_script():
     for i in range(len(role_list)):
         pause_event.wait()  # 暂停
 
-        role = role_list[i]
+        role = copy.deepcopy(role_list[i])
         # 判断,从指定的角色开始,其余的跳过
         if first_role_no != -1 and (i + 1) < first_role_no:
             logger.info(f'[跳过]-【{i + 1}】[{role.name}]...')
@@ -532,14 +533,18 @@ def main_script():
                             logger.info("识别当前职业是 " + job.name)
                             for cc in role_list:
                                 if cc.sub_class == job:
-                                    logger.info(f"从角色配置中找到对应的角色配置,{cc.no}-{cc.name}")
+                                    logger.info(f"从角色配置池中找到对应的角色配置,{cc.no}-{cc.sub_class}-{cc.name}")
+                                    role_bak = role
                                     role = cc
+                                    role.height = role_bak.height
+                                    role.fatigue_reserved = role_bak.fatigue_reserved
+                                    role.fatigue_all = role_bak.fatigue_all
                                     find_role_config = True
                                     break
                             if not find_role_config and role.sub_class_auto:
+                                logger.debug("未找到对应职业，缺省配置角色，并且允许自动配置角色高度和技能")
                                 role.height = BaseClass.get_base_class(job).height
                                 role.custom_priority_skills = skill_util.default_all_skills
-                                logger.debug("缺省配置角色，自动配置角色高度和技能")
                             break
                     break
                 else:
