@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 
 import config as config_
-from logger_config import logger
+from dnf.stronger.logger_config import logger
 from utils.monster_cluster import MonsterCluster
 from utils.utilities import match_template_one
 

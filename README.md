@@ -3,18 +3,41 @@ Dungeons and Baby Bus
 
 
 ```shell
-# 使用conda创建python环境
+# 环境依赖管理方式一：使用uv管理项目
+
+# 1. 安装uv，powershell中执行
+# 方式一：powershell命令行安装
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+# 方式二：pypi安装
+pipx install uv
+
+# 2. 同步项目依赖，项目根目录执行
+uv sync
+
+# 3. 激活环境 (powershell: Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned)
+.venv\Scripts\activate
+
+# 4. pycharm设置解释器，使用uv生成的venv
+
+```
+
+```shell
+# 环境依赖管理方式二：使用conda创建python环境
+
+# 1.创建conda环境
 conda create -n yolo11py310 python=3.10
+# 2.激活环境
 conda activate yolo11py310
 
+# 3.安装依赖
 
 # 安装ultralytics
 pip install ultralytics -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --trusted-host=https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
 
-pip install labelimg -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --trusted-host=https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
+#pip install labelimg -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --trusted-host=https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
 
 #[EasyOCR简单实用 - 知乎](https://zhuanlan.zhihu.com/p/636663266?utm_id=0)
-pip install easyocr -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --trusted-host=https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
+#pip install easyocr -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --trusted-host=https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
 
 pip install loguru -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --trusted-host=https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
 
@@ -32,6 +55,8 @@ pip install pyautogui -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --
 pip uninstall opencv-python-headless
 pip uninstall opencv-python
 pip install opencv-python
+
+# 4. pycharm设置解释器，使用创建的conda环境
 #########
 
 ```

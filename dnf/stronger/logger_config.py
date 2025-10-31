@@ -13,7 +13,7 @@ from datetime import datetime
 file_log_id = None
 console_log_id = None
 
-log_dir = './logs'
+log_dir = f'{os.path.dirname(os.path.abspath(__file__))}/logs'
 os.makedirs(log_dir, exist_ok=True)
 
 
