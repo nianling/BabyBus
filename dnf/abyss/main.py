@@ -55,7 +55,7 @@ from dnf.stronger.player import (
     receive_mail, match_and_click,
     close_new_day_dialog,
     detect_aolakou,
-    calc_role_height
+    calc_role_height, detect_try_again_conflict
 )
 from dnf.stronger.skill_util import get_skill_initial_images
 from dnf.stronger.logger_config import logger
@@ -1195,6 +1195,14 @@ def main_script():
                         kbu.do_press(Key.esc)
                         logger.warning("普通商店开着,需要esc关闭")
                         time.sleep(0.1)
+                        continue
+
+                    try_again_conflict = detect_try_again_conflict(capturer.capture())
+                    if try_again_conflict:
+                        logger.warning("再次挑战，有冲突，准备ESC！！！")
+                        kbu.do_press(Key.esc)
+                        time.sleep(0.3)
+                        logger.warning("再次挑战，有冲突，已经ESC！！！")
                         continue
 
                     # 不存在掉落物了,就再次挑战

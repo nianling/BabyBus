@@ -1066,6 +1066,34 @@ def close_new_day_dialog(handle, x, y):
         match_and_click(full_screen, x, y, template_btn_x, None)
 
 
+template_using_mystery_shop = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/using_mystery_shop.png'), cv2.IMREAD_GRAYSCALE)
+template_choose_to_sale = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/choose_to_sale.png'), cv2.IMREAD_GRAYSCALE)
+template_confirm_repair_equipment = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/confirm_repair_equipment.png'), cv2.IMREAD_GRAYSCALE)
+template_nothing_to_sale = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/nothing_to_sale.png'), cv2.IMREAD_GRAYSCALE)
+
+
+def detect_try_again_conflict(full_screen):
+    """
+    识别"再次挑战"是否冲突（比如正在使用神秘商店）
+    """
+    gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
+    matches = match_template(gray_screenshot, template_using_mystery_shop, threshold=0.8)
+    if len(matches) > 0:
+        logger.debug("再次挑战时，提示正在使用神秘商店！！")
+        return True
+
+    matches = match_template(gray_screenshot, template_choose_to_sale, threshold=0.8)
+    if len(matches) > 0:
+        logger.debug("再次挑战时，打开了商店的一键出售物品！！")
+        return True
+
+    matches = match_template(gray_screenshot, template_confirm_repair_equipment, threshold=0.8)
+    if len(matches) > 0:
+        logger.debug("再次挑战时，打开了商店的修理装备！！")
+        return True
+
+    return False
+
 if __name__ == '__main__':
     # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-222758.png')
     # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-223839.png')
