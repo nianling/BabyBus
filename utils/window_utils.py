@@ -3,6 +3,8 @@
 __author__ = "廿陵 <wemean66@gmail.com> (GitHub: @nianling)"
 __version__ = '1.0'
 
+import time
+
 import numpy as np
 import pyautogui
 import win32con
@@ -190,3 +192,40 @@ class WindowCapture:
         self.mem_dc.DeleteDC()
         self.dc.DeleteDC()
         win32gui.ReleaseDC(self.hwnd, self.wdc)
+
+
+def is_window_active(hwnd):
+    """判断指定窗口是否当前处于激活（前台焦点）状态"""
+    if not win32gui.IsWindow(hwnd):
+        return False
+    return win32gui.GetForegroundWindow() == hwnd
+
+
+def activate_window(hwnd):
+    """将窗口激活到前台，获得焦点"""
+    if not win32gui.IsWindow(hwnd):
+        raise ValueError("无效的窗口句柄!")
+
+    # 已激活，无需操作
+    if is_window_active(hwnd):
+        return False
+
+    # 确保窗口未被最小化
+    if win32gui.IsIconic(hwnd):
+        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+
+    # 获取当前线程和目标窗口线程
+    current_thread = win32api.GetCurrentThreadId()
+    window_thread, _ = win32process.GetWindowThreadProcessId(hwnd)
+
+    # 如果线程不同，附加输入上下文
+    if current_thread != window_thread:
+        win32process.AttachThreadInput(current_thread, window_thread, True)
+        win32gui.BringWindowToTop(hwnd)
+        win32gui.SetForegroundWindow(hwnd)
+        win32process.AttachThreadInput(current_thread, window_thread, False)
+    else:
+        win32gui.BringWindowToTop(hwnd)
+        win32gui.SetForegroundWindow(hwnd)
+
+    time.sleep(0.2)

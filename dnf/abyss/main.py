@@ -733,10 +733,12 @@ def main_script():
                 hole_xywh_list = det.hole_xywh_list
 
                 aolakou = False
+                try_again_conflict = False
                 if continue_exist or shop_exist:
                     logger.debug(f"出现商店{shop_exist}，再次挑战了{continue_exist}")
                     fight_victory = True
-                    aolakou = detect_aolakou(results[0].orig_img)
+                    # aolakou = detect_aolakou(results[0].orig_img)
+                    try_again_conflict = detect_try_again_conflict(capturer.capture())
 
                 if ball_xywh_list:
                     logger.debug(f"出现球了")
@@ -748,7 +750,7 @@ def main_script():
                     if not boss_appeared:
                         boss_appeared = True
                     logger.info(f"出现boss了")
-
+                    
                 if cv_det_task:
                     cv_det = cv_det_task.result()
                     if cv_det and cv_det["death"]:
@@ -796,9 +798,10 @@ def main_script():
                     else:
                         logger.warning('未检测到角色,已经结算了')
                         if not collect_loot_pressed and (sss_exist or continue_exist or shop_exist or shop_mystery_exist):
-                            mover.move(target_direction="LEFT")
+                            random_direct = random.choice(['LEFT', 'DOWN', 'UP'])
+                            mover.move(target_direction=random_direct)
                             # time.sleep(0.1)
-                    if not aolakou:
+                    if not aolakou and not try_again_conflict:
                         continue
 
                 # ############################### 判断-准备打怪 ######################################
@@ -1072,7 +1075,6 @@ def main_script():
                             logger.debug('太靠右了，先调整一下')
                             mover.move(target_direction="LEFT")
                             time.sleep(0.3)
-                        logger.warning("预先移动物品到脚下")
                         # 不管了,全部释放掉
                         mover._release_all_keys()
 
@@ -1197,7 +1199,7 @@ def main_script():
                         time.sleep(0.1)
                         continue
 
-                    try_again_conflict = detect_try_again_conflict(capturer.capture())
+                    # try_again_conflict = detect_try_again_conflict(capturer.capture())
                     if try_again_conflict:
                         logger.warning("再次挑战，有冲突，准备ESC！！！")
                         kbu.do_press(Key.esc)
@@ -1226,6 +1228,8 @@ def main_script():
                                 time.sleep(0.3)
 
                             time.sleep(0.3)
+                            mover._release_all_keys()
+                            time.sleep(0.1)
                             logger.warning("中间移动物品到脚下")
                             kbu.do_press(dnf.Key_collect_loot)
                             collect_loot_pressed = True
@@ -1363,7 +1367,11 @@ def main_script():
             # 收邮件
             if datetime.now().weekday() in dnf.receive_mail_days:
                 logger.info('日期匹配，今日触发收邮件')
-                receive_mail(capturer.capture(), x, y)
+                for _ in range(3):  # 3次吧
+                    time.sleep(1)
+                    have_mail = receive_mail(capturer.capture(), x, y)
+                    if not have_mail:
+                        break
 
             pause_event.wait()  # 暂停
             # 转移材料到账号金库

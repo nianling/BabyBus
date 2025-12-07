@@ -255,7 +255,6 @@ def match_get_center(img_full_color, x, y, template_gray, threshold=0.9):
             x2, y2 = bottom_right
             center_x = int((x1 + x2) / 2)
             center_y = int((y1 + y2) / 2)
-            print('center', center_x, center_y)
             center = x + center_x, y + center_y
     except Exception as e:
         logger.error(e)
