@@ -3,21 +3,31 @@ Dungeons and Baby Bus
 
 
 ```shell
+# 先安装python3.10.x
+# 下载地址
+https://www.python.org/downloads/windows/
+
 # 环境依赖管理方式一：使用uv管理项目
 
-# 1. 安装uv，powershell中执行
-# 方式一：powershell命令行安装
+# 1. 安装uv
+# 方式一：手动下载uv，解压文件并将路径配置到path环境变量
+https://github.com/astral-sh/uv/releases
+# 方式二：powershell命令行安装
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-# 方式二：pypi安装
+# 方式三：pypi安装
 pipx install uv
 
 # 2. 同步项目依赖，项目根目录执行
 uv sync
 
-# 3. 激活环境 (powershell: Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned)
-.venv\Scripts\activate
+# 3. 双击start.abyss.bat、start.stronger.bat启动脚本
 
-# 4. pycharm设置解释器，使用uv生成的venv
+###### IDE 和 终端 #######
+
+# IDE设置： 设置解释器，使用uv生成的venv
+
+# 终端设置： 激活环境 (powershell: Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned)
+.venv\Scripts\activate
 
 ```
 
