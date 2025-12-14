@@ -723,7 +723,7 @@ def main_script():
         # 角色当前疲劳值
         current_fatigue = role.fatigue_all
         fatigue_cost = 16  # 一把消耗的疲劳值
-        if game_mode == 3 or game_mode == 4:
+        if game_mode == 3 or game_mode == 4 or game_mode == 2:
             fatigue_cost = 8
 
         logger.info(f'{role.name},拥有疲劳值:{role.fatigue_all},预留疲劳值:{role.fatigue_reserved}')
