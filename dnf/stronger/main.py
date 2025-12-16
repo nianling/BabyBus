@@ -993,7 +993,10 @@ def main_script():
 
                 # 截图
                 img0 = capturer.capture()
-
+                if img0 is None:
+                    logger.error("截图失败")
+                    continue
+                
                 # 识别
                 cv_det_task = None
                 if boss_appeared or in_boss_room or boss_door_appeared or game_mode == 2:
@@ -2087,7 +2090,11 @@ def main_script():
             # 收邮件
             if datetime.now().weekday() in dnf.receive_mail_days:
                 logger.info('日期匹配，今日触发收邮件')
-                receive_mail(capturer.capture(), x, y)
+                for _ in range(3):  # 3次吧
+                    time.sleep(1)
+                    have_mail = receive_mail(capturer.capture(), x, y)
+                    if not have_mail:
+                        break
 
             pause_event.wait()  # 暂停
             # 转移材料到账号金库

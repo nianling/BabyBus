@@ -679,6 +679,9 @@ def main_script():
 
                 # 截图
                 img0 = capturer.capture()
+                if img0 is None:
+                    logger.error("截图失败")
+                    continue
                 # 识别
                 cv_det_task = None
                 if boss_appeared or hole_appeared or ball_appeared:
