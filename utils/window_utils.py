@@ -153,8 +153,7 @@ def capture_window_BGRX(hwnd, region=None):
     camera = dxcam.create(output_idx=0, output_color="BGR")
 
     # 获取窗口大小
-    left, top, right, bot = win32gui.GetClientRect(hwnd)
-    # left, top, right, bot = win32gui.GetWindowRect(hwnd)
+    left, top, right, bot = win32gui.GetWindowRect(hwnd)
     w = right - left
     h = bot - top
 
