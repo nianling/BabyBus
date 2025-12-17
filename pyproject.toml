@@ -8,6 +8,7 @@ readme = "README.md"
 #requires-python = ">=3.10"
 requires-python = "==3.10.*"
 dependencies = [
+    "dxcam>=0.0.5",
     "keyboard>=0.13.5",
     "loguru>=0.7.3",
     "opencv-python>=4.11.0.86",

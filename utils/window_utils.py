@@ -3,12 +3,49 @@
 __author__ = "廿陵 <wemean66@gmail.com> (GitHub: @nianling)"
 __version__ = '1.0'
 
+import time
+import ctypes
+
 import numpy as np
 import pyautogui
 import win32con
 import win32gui
 import win32ui
+import win32process
+import win32api
+import dxcam
 
+# 设置 DPI 感知
+# 高分屏下如果DPI不感知，GetWindowRect 抓取的坐标会错位，导致截不到图
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(1)
+except Exception:
+    ctypes.windll.user32.SetProcessDPIAware()
+
+
+def kill_process_by_hwnd(hwnd):
+    """
+    根据窗口句柄终止对应的进程
+    :param hwnd: 窗口句柄 (int)
+    """
+    if not win32gui.IsWindow(hwnd):
+        return False
+
+    # 获取进程 ID
+    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+
+    try:
+        # 打开进程
+        handle = win32api.OpenProcess(win32con.PROCESS_TERMINATE, False, pid)
+        # 终止进程
+        win32api.TerminateProcess(handle, 0)
+        # 关闭句柄
+        win32api.CloseHandle(handle)
+        print(f"进程 (PID={pid}) 已被终止")
+        return True
+    except Exception as e:
+        print(f"终止进程失败: {e}")
+        return False
 
 def get_window_handle(window_title):
     """
@@ -46,8 +83,9 @@ def capture_window_image(handle):
     return screenshot
 
 
-def capture_window_BGRX(hwnd, region=None):
+def capture_window_BGRX_GDI(hwnd, region=None):
     """
+    基于GDI实现的截图，dx11已经不适用
     BGRX
     region(offset_x, offset_y, width, height)
     """
@@ -105,6 +143,44 @@ def capture_window_BGRX(hwnd, region=None):
     # 转换为numpy数组
     # return np.array(img)
 
+# dxcam ---
+def capture_window_BGRX(hwnd, region=None):
+    """
+    使用dxcam实现截图，兼容dx9和dx11
+    region(offset_x, offset_y, width, height)
+    直接返回 BGR的numpy数组
+    """
+    camera = dxcam.create(output_idx=0, output_color="BGR")
+
+    # 获取窗口大小
+    left, top, right, bot = win32gui.GetWindowRect(hwnd)
+    w = right - left
+    h = bot - top
+
+    if region:
+        offset_x, offset_y, width, height = region
+        left = left + offset_x
+        top = top + offset_y
+        w = width
+        h = height
+
+    frame = camera.grab(region=(left, top, right, bot))
+
+    if frame is None:
+        retry_cnt = 0
+        while frame is None:
+            time.sleep(0.01)
+            frame = camera.grab(region=(left, top, right, bot))
+            retry_cnt = retry_cnt + 1
+            if retry_cnt > 5:
+                time.sleep(0.01)
+            if retry_cnt > 20:
+                print("capture_window_BGRX重试20次还是无法截图")
+                return np.array([])
+    # 释放资源
+    del camera
+    return frame
+
 
 def crop_image(image, x, y, width, height):
     """
@@ -119,7 +195,10 @@ def crop_image(image, x, y, width, height):
     return image[y:y + height, x:x + width]
 
 
-class WindowCapture:
+class WindowCapture_GDI:
+    """
+    基于GDI实现的截图，dx11已经不适用
+    """
     def __init__(self, hwnd):
         self.hwnd = hwnd
         self._init_resources()
@@ -164,3 +243,110 @@ class WindowCapture:
         self.mem_dc.DeleteDC()
         self.dc.DeleteDC()
         win32gui.ReleaseDC(self.hwnd, self.wdc)
+
+
+class WindowCapture:
+    def __init__(self, hwnd):
+        self.hwnd = hwnd
+        self.camera = None
+        self._init_resources()
+
+    def _init_resources(self):
+        """
+        初始化 DXCAM 相机
+        """
+        # output_idx=0 代表主显示器。如果游戏在副屏，就改为1
+        # output_color="BGR" 直接返回 BGR 格式
+        try:
+            self.camera = dxcam.create(output_idx=0, output_color="BGR")
+        except Exception as e:
+            print(f"DXCAM 初始化失败: {e}")
+            self.camera = None
+
+    def capture(self):
+        """
+        截取画面，返回 BGR 格式的 numpy 数组
+        """
+        if self.camera is None:
+            return None
+
+        # 每次截图时动态获取窗口位置
+        try:
+            x1, y1, x2, y2 = win32gui.GetWindowRect(self.hwnd)
+            w = x2 - x1
+            h = y2 - y1
+
+            # 校验窗口是否有效
+            if w <= 0 or h <= 0:
+                print("窗口大小不对劲")
+                return None
+
+            # region = (left, top, right, bottom)
+            img = self.camera.grab(region=(x1, y1, x2, y2))
+
+            if img is not None:
+                return img
+            else:
+                retry_cnt = 0
+                while img is None:
+                    time.sleep(0.01)
+                    img = self.camera.grab(region=(x1, y1, x2, y2))
+                    retry_cnt = retry_cnt + 1
+                    if retry_cnt > 5:
+                        time.sleep(0.01)
+                    if retry_cnt > 20:
+                        print("重试20次还是无法截图")
+                        return None
+                return img
+        except Exception as e:
+            print(f"截图出错: {e}")
+            return None
+
+    def release(self):
+        """
+        清理资源
+        """
+        if self.camera:
+            try:
+                self.camera.stop()
+            except:
+                pass
+            del self.camera
+            self.camera = None
+
+
+def is_window_active(hwnd):
+    """判断指定窗口是否当前处于激活（前台焦点）状态"""
+    if not win32gui.IsWindow(hwnd):
+        return False
+    return win32gui.GetForegroundWindow() == hwnd
+
+
+def activate_window(hwnd):
+    """将窗口激活到前台，获得焦点"""
+    if not win32gui.IsWindow(hwnd):
+        raise ValueError("无效的窗口句柄!")
+
+    # 已激活，无需操作
+    if is_window_active(hwnd):
+        return False
+
+    # 确保窗口未被最小化
+    if win32gui.IsIconic(hwnd):
+        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+
+    # 获取当前线程和目标窗口线程
+    current_thread = win32api.GetCurrentThreadId()
+    window_thread, _ = win32process.GetWindowThreadProcessId(hwnd)
+
+    # 如果线程不同，附加输入上下文
+    if current_thread != window_thread:
+        win32process.AttachThreadInput(current_thread, window_thread, True)
+        win32gui.BringWindowToTop(hwnd)
+        win32gui.SetForegroundWindow(hwnd)
+        win32process.AttachThreadInput(current_thread, window_thread, False)
+    else:
+        win32gui.BringWindowToTop(hwnd)
+        win32gui.SetForegroundWindow(hwnd)
+
+    time.sleep(0.2)

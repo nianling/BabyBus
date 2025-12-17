@@ -16,7 +16,7 @@ import config as config_
 import dnf.dnf_config as dnf
 import utils.window_utils as wu
 from dnf.stronger.player import match_and_click
-from utils import keyboard_utils as kbu
+from utils import keyboard_utils as kbu, window_utils
 
 
 def prepare_start():
@@ -45,15 +45,23 @@ def prepare_start():
     time.sleep(1)
     print("等待游戏启动")
     time.sleep(120)
+
+    handle = window_utils.get_window_handle(dnf.window_title)
+    if not handle:
+        print("游戏启动失败")
+        return
     print("游戏启动完毕")
+    window_utils.activate_window(handle)
+    print("确保游戏窗口在前台")
+    time.sleep(1)
 
-    for i in range(6):
+    for i in range(10):
         kbu.do_press(Key.up)
-        time.sleep(0.2)
+        time.sleep(0.3)
 
-    for i in range(6):
+    for i in range(10):
         kbu.do_press(Key.left)
-        time.sleep(0.2)
+        time.sleep(0.3)
 
     kbu.do_press(Key.space)
     time.sleep(10)

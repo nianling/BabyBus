@@ -5,11 +5,11 @@ __version__ = '1.0'
 
 from pynput.keyboard import Key
 
-from dnf.stronger.role_config import RoleConfig as R
+from dnf.stronger.role_config import RoleConfig as R, SubClass, BaseClass
 from dnf.stronger.role_config import Skill as S
 
 
-def get_role_config_list():
+def get_role_config_list() -> list[R]:
     # 总疲劳值
     default_fatigue_all = 188
     # 保留的疲劳值

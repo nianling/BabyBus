@@ -3,7 +3,6 @@
 __author__ = "廿陵 <wemean66@gmail.com> (GitHub: @nianling)"
 __version__ = '1.0'
 
-
 from pynput import keyboard
 from pynput.keyboard import Key, KeyCode
 import weights
@@ -34,3 +33,26 @@ key_start_script = 'f10'
 # 截图日志
 enable_picture_log = True
 
+# 技能栏快捷键配置，第一排第二排依次填写
+skill_hotkeys = [
+    # 第一排
+    "q",
+    "w",
+    "e",
+    "r",
+    "t",
+    "v",
+    Key.ctrl_l,
+
+    # 第二排
+    "a",
+    "s",
+    "d",
+    "f",
+    "g",
+    Key.tab,
+    "h",
+]
+
+# 配置每周几领取邮件，0周一，1周二，2周三，3周四，4周五，5周六，6周日
+receive_mail_days = [3, 6]

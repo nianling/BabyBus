@@ -7,21 +7,27 @@ import os
 import time
 
 import cv2
-import easyocr
+# import easyocr
 import numpy as np
 from pynput.keyboard import Key
 from pynput.mouse import Button
 from pathlib import Path
+from skimage.metrics import structural_similarity as ssim
 
 import config as config_
 from dnf.stronger.method import (
     extract_fatigue_number
 )
-from logger_config import logger
+from dnf.stronger.logger_config import logger
 from utils import keyboard_utils as kbu
 from utils import mouse_utils as mu
 from utils import window_utils as window_utils
-from utils.utilities import match_template, compare_images, match_template_one, match_template_with_confidence
+from utils.utilities import (
+    match_template, compare_images,
+    match_template_one,
+    match_template_with_confidence,
+    match_template_one_with_conf
+)
 
 reader = None
 
@@ -207,6 +213,65 @@ def teleport_to_sailiya(x, y):
     kbu.do_press_with_time(Key.down, 140, 200)
 
 
+def match_and_click(img_full_color, x, y, template_gray, default_position, threshold=0.9):
+    """
+    匹配,移动鼠标到目标位置，点击一下
+    """
+    matched = False
+    try:
+        gray_screenshot = cv2.cvtColor(img_full_color, cv2.COLOR_BGRA2GRAY)
+        matches = match_template(gray_screenshot, template_gray, threshold=threshold)
+        if len(matches) > 0:
+            matched = True
+            top_left, bottom_right = matches[0]
+            x1, y1 = top_left
+            x2, y2 = bottom_right
+            center_x = int((x1 + x2) / 2)
+            center_y = int((y1 + y2) / 2)
+            mu.do_move_to(x + center_x, y + center_y)
+            time.sleep(0.3)
+            mu.do_click(Button.left)
+    except Exception as e:
+        logger.error(e)
+        if default_position:
+            mu.do_move_to(x + default_position[0], y + default_position[1])
+            time.sleep(0.3)
+            mu.do_click(Button.left)
+    time.sleep(0.3)
+    return matched
+
+
+def match_get_center(img_full_color, x, y, template_gray, threshold=0.9):
+    """
+    匹配,获取中心点（x,y）
+    """
+    center = None
+    try:
+        gray_screenshot = cv2.cvtColor(img_full_color, cv2.COLOR_BGRA2GRAY)
+        matches = match_template(gray_screenshot, template_gray, threshold=threshold)
+        if len(matches) > 0:
+            top_left, bottom_right = matches[0]
+            x1, y1 = top_left
+            x2, y2 = bottom_right
+            center_x = int((x1 + x2) / 2)
+            center_y = int((y1 + y2) / 2)
+            center = x + center_x, y + center_y
+    except Exception as e:
+        logger.error(e)
+    return center
+
+
+title_gray = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/xb_fighting.png'), cv2.IMREAD_GRAYSCALE)
+
+
+def calc_role_height(img_full_color, x, y):
+    title_center = match_get_center(img_full_color, x, y, title_gray)
+    if title_center:
+        height = 160 - (title_center[1] - (y + 273))
+        return height
+    return None
+
+
 def clik_to_quit_game(handle, x, y):
     """
     结束游戏
@@ -217,125 +282,174 @@ def clik_to_quit_game(handle, x, y):
     kbu.do_press(Key.esc)
     time.sleep(0.5)
 
-    mu.do_smooth_move_to(x + 679, y + 497)
-    time.sleep(0.3)
-    mu.do_click(Button.left)
-    time.sleep(0.3)
+    full_screen = window_utils.capture_window_BGRX(handle)
+    template_quit_game = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/quit_game1.png'), cv2.IMREAD_GRAYSCALE)
+    step1 = match_and_click(full_screen, x, y, template_quit_game, (679, 497))
+    time.sleep(0.5)
 
     full_screen = window_utils.capture_window_BGRX(handle)
-    gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
-    template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/quit_game.png'), cv2.IMREAD_COLOR)
-    template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
-    matches = match_template(gray_screenshot, template_again_gray, threshold=0.9)
-    top_left, bottom_right = matches[0]
-    x1, y1 = top_left
-    x2, y2 = bottom_right
-    center_x = int((x1 + x2) / 2)
-    center_y = int((y1 + y2) / 2)
-    mu.do_move_to(x + center_x, y + center_y)
-    time.sleep(0.3)
-    mu.do_click(Button.left)
-    time.sleep(0.3)
+    template_again_gray = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/return_btn.png'), cv2.IMREAD_GRAYSCALE)
+    return_btn_center = match_get_center(full_screen, x, y, template_again_gray)
+    if return_btn_center:
+        mu.do_move_to(return_btn_center[0] + 65, return_btn_center[1])
+        time.sleep(0.5)
+        mu.do_click(Button.left)
+        time.sleep(0.5)
 
 
-# todo todo 截好图传参(先移动鼠标,)，判断图片
-def do_ocr_fatigue(handle, x, y, model):
+
+# # todo todo 截好图传参(先移动鼠标,)，判断图片
+# def do_ocr_fatigue(handle, x, y, model):
+#     """
+#     easyocr，识别疲劳值
+#     :param model:
+#     :param handle:
+#     :param x:
+#     :param y:
+#     :return:
+#     """
+#     # mu.do_smooth_move_to(x + 1038, y + 713)
+#     # mu.do_smooth_move_to(x + 865, y + 594)
+#     mu.do_smooth_move_to(x + 875, y + 594)
+#     time.sleep(0.2)
+#     # img_fatigue = window_utils.capture_window_BGRX(handle, (985, 689, 92, 17))
+#     # img_fatigue = window_utils.capture_window_BGRX(handle, (976, 687, 111, 18)) # 整体部分 976, 687 1087 705
+#     # img_fatigue = window_utils.capture_window_BGRX(handle, (1032, 687, 55, 18))  # 数值部分
+#     # img_fatigue = window_utils.capture_window_BGRX(handle, (1035, 687, 52, 18))  # 数值部分
+#     img_fatigue = window_utils.capture_window_BGRX(handle, (880, 574, 43, 13))  # 数值部分
+#
+#     # 放大图像
+#     resize = cv2.resize(img_fatigue, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
+#
+#     # 转换为灰度图
+#     gray = cv2.cvtColor(resize, cv2.COLOR_BGRA2GRAY)
+#
+#     # 二值化
+#     _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+#
+#     # 去噪
+#     denoised = cv2.medianBlur(thresh, 3)
+#
+#     # 边缘增强
+#     kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
+#     sharpened = cv2.filter2D(denoised, -1, kernel)
+#
+#     # # 膨胀和腐蚀
+#     # kernel = np.ones((2, 2), np.uint8)
+#     # dilated = cv2.dilate(sharpened, kernel, iterations=1)
+#     # eroded = cv2.erode(dilated, kernel, iterations=1)
+#
+#     # # 对比度调整
+#     # adjusted = cv2.convertScaleAbs(eroded, alpha=1.5, beta=0)
+#
+#     # cv2.imshow('img_fatigue', img_fatigue)
+#     # cv2.imwrite('./img_fatigue.png', img_fatigue)
+#     #
+#     # cv2.imshow('resize', resize)
+#     # cv2.imwrite('./resize.png', resize)
+#     #
+#     # cv2.imshow('gray', gray)
+#     # cv2.imwrite('./gray.png', gray)
+#     #
+#     # cv2.imshow('thresh', thresh)
+#     # cv2.imwrite('./thresh.png', thresh)
+#     #
+#     # cv2.imshow('denoised', denoised)
+#     # cv2.imwrite('./denoised.png', denoised)
+#     #
+#     # cv2.imshow('sharpened', sharpened)
+#     # cv2.imwrite('./sharpened.png', sharpened)
+#
+#     # cv2.imshow('eroded', eroded)
+#     # cv2.imshow('adjusted', adjusted)
+#
+#     # cv2.waitKey(0)
+#     global reader
+#
+#     if reader is None:
+#         if model is not None:
+#             reader = model
+#         else:
+#             reader = easyocr.Reader(['en'])
+#
+#     result = reader.readtext(sharpened, allowlist="0123456789/", detail=0)
+#     logger.debug('识别文本:{}', result)
+#
+#     mu.do_smooth_move_to(x + 1027, y + 561)
+#
+#     # 解析结果并提取匹配模式的文本
+#     for detection in result:
+#         # logger.debug('---------->', detection)
+#         # text = detection
+#         # if pattern_pl.search(text):
+#         #     matched_text = pattern_pl.search(text).group()
+#         #     logger.debug(f"识别疲劳值->:{matched_text}")
+#         #     parts = matched_text.split("/")
+#         #     return int(parts[0])
+#         fatigue = extract_fatigue_number(detection)
+#         if fatigue is not None:
+#             logger.debug(f"识别疲劳值1->:{fatigue}")
+#             return fatigue
+#     if len(result) > 0:
+#         fatigue = result[0].strip()
+#         logger.debug(f"识别疲劳值2->:{fatigue}")
+#         return int(fatigue)
+#     logger.error("识别疲劳值为空!")
+#     return None
+
+
+# 提前先加载疲劳数字
+pl_num_images = {}
+for i in range(10):
+    pl_i = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/img_pl/{i}.png'), cv2.IMREAD_COLOR)
+    pl_i = cv2.cvtColor(pl_i, cv2.COLOR_BGR2GRAY)
+    pl_num_images[i] = pl_i
+
+
+def do_recognize_fatigue(img):
     """
-    easyocr，识别疲劳值
-    :param model:
-    :param handle:
-    :param x:
-    :param y:
+    识别疲劳值
+    :param img:
     :return:
     """
-    # mu.do_smooth_move_to(x + 1038, y + 713)
-    # mu.do_smooth_move_to(x + 865, y + 594)
-    mu.do_smooth_move_to(x + 875, y + 594)
-    time.sleep(0.2)
-    # img_fatigue = window_utils.capture_window_BGRX(handle, (985, 689, 92, 17))
-    # img_fatigue = window_utils.capture_window_BGRX(handle, (976, 687, 111, 18)) # 整体部分 976, 687 1087 705
-    # img_fatigue = window_utils.capture_window_BGRX(handle, (1032, 687, 55, 18))  # 数值部分
-    # img_fatigue = window_utils.capture_window_BGRX(handle, (1035, 687, 52, 18))  # 数值部分
-    img_fatigue = window_utils.capture_window_BGRX(handle, (880, 574, 43, 13))  # 数值部分
+    # 5*5 *3
+    x1, y1, x2, y2 = 842, 592, 856 + 1, 596 + 1
+    fatigue_region = img[y1:y2, x1:x2]
 
-    # 放大图像
-    resize = cv2.resize(img_fatigue, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
-
-    # 转换为灰度图
-    gray = cv2.cvtColor(resize, cv2.COLOR_BGRA2GRAY)
-
-    # 二值化
-    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    # 去噪
-    denoised = cv2.medianBlur(thresh, 3)
-
-    # 边缘增强
-    kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
-    sharpened = cv2.filter2D(denoised, -1, kernel)
-
-    # # 膨胀和腐蚀
-    # kernel = np.ones((2, 2), np.uint8)
-    # dilated = cv2.dilate(sharpened, kernel, iterations=1)
-    # eroded = cv2.erode(dilated, kernel, iterations=1)
-
-    # # 对比度调整
-    # adjusted = cv2.convertScaleAbs(eroded, alpha=1.5, beta=0)
-
-    # cv2.imshow('img_fatigue', img_fatigue)
-    # cv2.imwrite('./img_fatigue.png', img_fatigue)
-    #
-    # cv2.imshow('resize', resize)
-    # cv2.imwrite('./resize.png', resize)
-    #
-    # cv2.imshow('gray', gray)
-    # cv2.imwrite('./gray.png', gray)
-    #
-    # cv2.imshow('thresh', thresh)
-    # cv2.imwrite('./thresh.png', thresh)
-    #
-    # cv2.imshow('denoised', denoised)
-    # cv2.imwrite('./denoised.png', denoised)
-    #
-    # cv2.imshow('sharpened', sharpened)
-    # cv2.imwrite('./sharpened.png', sharpened)
-
-    # cv2.imshow('eroded', eroded)
-    # cv2.imshow('adjusted', adjusted)
-
+    # cv2.imwrite('./fatigue_region.png', fatigue_region)
+    # cv2.imshow("fatigue_region", fatigue_region)
     # cv2.waitKey(0)
-    global reader
 
-    if reader is None:
-        if model is not None:
-            reader = model
-        else:
-            reader = easyocr.Reader(['en'])
+    fatigue_region = cv2.cvtColor(fatigue_region, cv2.COLOR_BGR2GRAY)
 
-    result = reader.readtext(sharpened, allowlist="0123456789/", detail=0)
-    logger.debug('识别文本:{}', result)
+    # 百位 十位 个位
+    hundreds_place_region = fatigue_region[:, :int(fatigue_region.shape[1] / 3)]
+    tens_place_region = fatigue_region[:, int(fatigue_region.shape[1] / 3):int(fatigue_region.shape[1] * 2 / 3)]
+    ones_place_region = fatigue_region[:, int(fatigue_region.shape[1] * 2 / 3):]
 
-    mu.do_smooth_move_to(x + 1027, y + 561)
+    pl_hundreds = 0
+    pl_tens = 0
+    pl_ones = 0
 
-    # 解析结果并提取匹配模式的文本
-    for detection in result:
-        # logger.debug('---------->', detection)
-        # text = detection
-        # if pattern_pl.search(text):
-        #     matched_text = pattern_pl.search(text).group()
-        #     logger.debug(f"识别疲劳值->:{matched_text}")
-        #     parts = matched_text.split("/")
-        #     return int(parts[0])
-        fatigue = extract_fatigue_number(detection)
-        if fatigue is not None:
-            logger.debug(f"识别疲劳值1->:{fatigue}")
-            return fatigue
-    if len(result) > 0:
-        fatigue = result[0].strip()
-        logger.debug(f"识别疲劳值2->:{fatigue}")
-        return int(fatigue)
-    logger.error("识别疲劳值为空!")
-    return None
+    for i in pl_num_images.keys():
+        # logger.debug(f"匹配数字->:{i}")
+        result = match_template_one_with_conf(ones_place_region, pl_num_images[i], 0.95)
+        if len(result) > 0:
+            # logger.debug(f"百位 匹配到->:{i},---->{result[0]}")
+            pl_ones = i
+
+        result = match_template_one_with_conf(tens_place_region, pl_num_images[i], 0.95)
+        if len(result) > 0:
+            # logger.debug(f"十位 匹配到->:{i},---->{result[0]}")
+            pl_tens = i
+        result = match_template_one_with_conf(hundreds_place_region, pl_num_images[i], 0.95)
+        if len(result) > 0:
+            # logger.debug(f"个位 匹配到->:{i},---->{result[0]}")
+            pl_hundreds = i
+
+    pl_result = pl_hundreds * 100 + pl_tens * 10 + pl_ones
+    logger.debug(f"识别疲劳值-->:{pl_result}")
+    return pl_result
 
 
 def do_ocr_fatigue_retry(handle, x, y, model, retry=1, default_fatigue=10):
@@ -349,12 +463,12 @@ def do_ocr_fatigue_retry(handle, x, y, model, retry=1, default_fatigue=10):
     :param default_fatigue:
     :return:
     """
-    for attempt in range(retry):
-        result = do_ocr_fatigue(handle, x, y, model)  # todo
-        if result is not None:
-            return result
-        else:
-            logger.warning(f"第{attempt + 1}次识别疲劳值失败,重试中...")
+    # for attempt in range(retry):
+    #     result = do_ocr_fatigue(handle, x, y, model)  # todo
+    #     if result is not None:
+    #         return result
+    #     else:
+    #         logger.warning(f"第{attempt + 1}次识别疲劳值失败,重试中...")
     logger.warning(f"识别疲劳值失败...")
     return default_fatigue
 
@@ -637,7 +751,7 @@ def detect_aolakou(full_screen):
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
     matches = match_template(gray_screenshot, template_again_gray, threshold=0.8)
     if len(matches) > 0:
-        print("有普通奥拉扣！！")
+        logger.debug("有普通奥拉扣！！")
         return True
 
     template_again = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/activity/act_aolakou2.jpg'),
@@ -645,7 +759,7 @@ def detect_aolakou(full_screen):
     template_again_gray = cv2.cvtColor(template_again, cv2.COLOR_BGR2GRAY)
     matches = match_template(gray_screenshot, template_again_gray, threshold=0.8)
     if len(matches) > 0:
-        print("有特殊奥拉扣！！")
+        logger.debug("有特殊奥拉扣！！")
         return True
 
     return False
@@ -875,7 +989,7 @@ def activity_live(x, y):
     logger.info('垃圾活动')
     time.sleep(0.4)
     # 活动图标
-    mu.do_smooth_move_to(x + 819, y + 516)
+    mu.do_smooth_move_to(x + 843, y + 516)
     time.sleep(0.2)
     mu.do_click(Button.left)
     time.sleep(0.2)
@@ -891,3 +1005,110 @@ def activity_live(x, y):
     kbu.do_press(Key.esc)
     time.sleep(0.2)
 
+
+template_mail1 = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/mail_icon1.png'), cv2.IMREAD_GRAYSCALE)
+template_mail2 = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/mail_icon2.png'), cv2.IMREAD_GRAYSCALE)
+
+
+def receive_mail(img, x, y):
+    """
+    领取邮件
+    """
+    try:
+        logger.info('准备领取邮件')
+
+        have_mail = False
+        icon1 = match_and_click(img, x, y, template_mail1, None)
+        if icon1:
+            logger.info('有邮件,已打开收件箱！')
+            have_mail = True
+        else:
+            icon2 = match_and_click(img, x, y, template_mail2, None)
+            if icon2:
+                logger.info('有叹号邮件,已打开收件箱！')
+                have_mail = True
+            else:
+                logger.info('没有邮件。')
+
+        if have_mail:
+            time.sleep(1)
+            mu.do_move_to(x + 414, y + 458)
+            time.sleep(0.2)
+            mu.do_click(Button.left)
+            time.sleep(2)
+            logger.info('领取邮件完毕')
+
+            time.sleep(0.2)
+            kbu.do_press(Key.esc)
+
+        time.sleep(0.2)
+    except Exception as e:
+        logger.error('领邮件出错', e)
+
+
+def close_new_day_dialog(handle, x, y):
+    """
+    关闭0点弹窗
+    检测时机：脚本开始，换角色，出图后，
+    :return:
+    """
+    full_screen = window_utils.capture_window_BGRX(handle)
+    template_btn_close = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/dialog-btn-close.png'), cv2.IMREAD_GRAYSCALE)
+    matched1 = match_and_click(full_screen, x, y, template_btn_close, None)
+    if matched1:
+        logger.info("关闭对话框了")
+
+    if not matched1:
+        logger.info("准备关闭对话框x")
+        full_screen = window_utils.capture_window_BGRX(handle)
+        template_btn_x = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/dialog-btn-X.png'), cv2.IMREAD_GRAYSCALE)
+        match_and_click(full_screen, x, y, template_btn_x, None)
+
+
+template_using_mystery_shop = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/using_mystery_shop.png'), cv2.IMREAD_GRAYSCALE)
+template_choose_to_sale = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/choose_to_sale.png'), cv2.IMREAD_GRAYSCALE)
+template_confirm_repair_equipment = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/confirm_repair_equipment.png'), cv2.IMREAD_GRAYSCALE)
+template_nothing_to_sale = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/nothing_to_sale.png'), cv2.IMREAD_GRAYSCALE)
+
+
+def detect_try_again_conflict(full_screen):
+    """
+    识别"再次挑战"是否冲突（比如正在使用神秘商店）
+    """
+    gray_screenshot = cv2.cvtColor(full_screen, cv2.COLOR_BGRA2GRAY)
+    matches = match_template(gray_screenshot, template_using_mystery_shop, threshold=0.8)
+    if len(matches) > 0:
+        logger.debug("再次挑战时，提示正在使用神秘商店！！")
+        return True
+
+    matches = match_template(gray_screenshot, template_choose_to_sale, threshold=0.8)
+    if len(matches) > 0:
+        logger.debug("再次挑战时，打开了商店的一键出售物品！！")
+        return True
+
+    matches = match_template(gray_screenshot, template_confirm_repair_equipment, threshold=0.8)
+    if len(matches) > 0:
+        logger.debug("再次挑战时，打开了商店的修理装备！！")
+        return True
+
+    return False
+
+if __name__ == '__main__':
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-222758.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-223839.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-223950.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-224414.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-224426.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-224700.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-005935.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010108.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010155.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010242.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010318.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010422.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010458.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010532.png')
+    # img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250719-010548.png')
+
+    # do_recognize_fatigue(img)
+    close_new_day_dialog(1, 1, 1)

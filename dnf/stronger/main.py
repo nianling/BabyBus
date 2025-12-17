@@ -15,9 +15,9 @@ from datetime import datetime
 import queue
 import traceback
 import concurrent.futures
+import copy
 
 import cv2
-import easyocr
 import keyboard as kboard
 import numpy as np
 import torch
@@ -61,10 +61,15 @@ from dnf.stronger.player import (
     goto_white_map_level,
     buy_from_mystery_shop,
     process_mystery_shop,
-    activity_live
+    activity_live,
+    do_recognize_fatigue,
+    receive_mail, match_and_click,
+    close_new_day_dialog,
+    detect_aolakou, calc_role_height, detect_try_again_conflict,
 )
+from dnf.stronger.role_config import SubClass, BaseClass
 from logger_config import logger
-from role_list import get_role_config_list
+from dnf.stronger.role_list import get_role_config_list
 from utils import keyboard_utils as kbu
 from utils import mouse_utils as mu
 from utils import window_utils as window_utils
@@ -74,11 +79,13 @@ from utils.keyboard_move_controller import MovementController
 from utils.utilities import plot_one_box
 from utils.window_utils import WindowCapture
 from dnf.stronger.path_finder import PathFinder
-from utils.utilities import match_template_by_roi
+from utils.utilities import match_template_by_roi, match_template
 from utils.mail_sender import EmailSender
 from dnf.mail_config import config as mail_config
 from dnf.stronger.object_detect import object_detection_cv
 from utils.utilities import hex_to_bgr
+from dnf.stronger.skill_util import get_skill_initial_images
+from dnf.stronger.role_config import class_icon_map
 
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
@@ -105,7 +112,12 @@ last_role_no = 20
 # 游戏模式 1:白图（跌宕群岛），2:每日1+1，3:妖气追踪，4:妖怪歼灭，
 # 5:先1+1再白图，6:先1+1在妖气追踪
 game_mode = 1
-weights = os.path.join(config_.project_base_path, 'weights/2025022017.best.pt')  # 模型存放的位置
+
+# 使用此处统一配置预留的疲劳值
+enable_uniform_pl = False
+uniform_default_fatigue_reserved = 17
+
+weights = os.path.join(config_.project_base_path, 'weights/stronger.pt')  # 模型存放的位置
 # <<<<<<<<<<<<<<<< 运行时相关的参数 <<<<<<<<<<<<<<<<
 
 #  >>>>>>>>>>>>>>>> 脚本所需要的变量 >>>>>>>>>>>>>>>>
@@ -128,8 +140,7 @@ stop_be_pressed = False
 # 唤醒继续运行
 continue_pressed = False
 
-# 加载模型
-reader = easyocr.Reader(['en'])
+# reader = easyocr.Reader(['en'])
 # 疲劳值识别
 pattern_pl = re.compile(r'\d+/\d+')
 
@@ -162,104 +173,104 @@ names = [
 ]
 
 name_colors = [
-  {
-    "name": "boss",
-    "id": 1,
-    "color": "#523294",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "card",
-    "id": 2,
-    "color": "#5b98c6",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "continue",
-    "id": 3,
-    "color": "#4c7a1d",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "door",
-    "id": 4,
-    "color": "#4398ef",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "gold",
-    "id": 5,
-    "color": "#f2cb53",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "hero",
-    "id": 6,
-    "color": "#fefe30",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "loot",
-    "id": 7,
-    "color": "#a8e898",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "menu",
-    "id": 8,
-    "color": "#268674",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "monster",
-    "id": 9,
-    "color": "#fcb5fc",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "elite-monster",
-    "id": 10,
-    "color": "#33ddff",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "shop",
-    "id": 11,
-    "color": "#c8b3cb",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "shop-mystery",
-    "id": 12,
-    "color": "#909950",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "sss",
-    "id": 13,
-    "color": "#b5b5b0",
-    "type": "rectangle",
-    "attributes": []
-  },
-  {
-    "name": "door-boss",
-    "id": 14,
-    "color": "#ea6a4b",
-    "type": "rectangle",
-    "attributes": []
-  }
+    {
+        "name": "boss",
+        "id": 1,
+        "color": "#523294",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "card",
+        "id": 2,
+        "color": "#5b98c6",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "continue",
+        "id": 3,
+        "color": "#4c7a1d",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "door",
+        "id": 4,
+        "color": "#4398ef",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "gold",
+        "id": 5,
+        "color": "#f2cb53",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "hero",
+        "id": 6,
+        "color": "#fefe30",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "loot",
+        "id": 7,
+        "color": "#a8e898",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "menu",
+        "id": 8,
+        "color": "#268674",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "monster",
+        "id": 9,
+        "color": "#fcb5fc",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "elite-monster",
+        "id": 10,
+        "color": "#33ddff",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "shop",
+        "id": 11,
+        "color": "#c8b3cb",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "shop-mystery",
+        "id": 12,
+        "color": "#909950",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "sss",
+        "id": 13,
+        "color": "#b5b5b0",
+        "type": "rectangle",
+        "attributes": []
+    },
+    {
+        "name": "door-boss",
+        "id": 14,
+        "color": "#ea6a4b",
+        "type": "rectangle",
+        "attributes": []
+    }
 ]
 name_colors = [hex_to_bgr(d['color']) for d in name_colors]
 
@@ -286,8 +297,6 @@ executor = SingleTaskThreadPool()
 img_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
 tool_executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 mail_sender = EmailSender(mail_config)  # 初始化邮件发送器
-
-
 
 # 创建一个队列，用于主线程和展示线程之间的通信
 result_queue = queue.Queue()
@@ -345,7 +354,7 @@ def on_press(key):
             else:
                 logger.warning(f"按下 [{formatted_keys}] 键，唤醒运行...")
                 x, y, _, _ = window_utils.get_window_rect(handle)
-                mu.do_smooth_move_to(x + 500, y + 300)
+                mu.do_move_to(x + 250, y + 150)
                 time.sleep(0.1)
                 mu.do_click(Button.left)
                 continue_pressed = True
@@ -618,7 +627,7 @@ def minimap_analyse(capturer):
             # cv2.imwrite(f'errorDetectMap_init_{map_error_cnt}.jpg', img0)
             # logger.error(f"分析小地图的行列init，第 {map_error_cnt} 次出错,行列是 {rows} , {cols}")
             # logger.error("暂停2秒继续重试！！")
-            time.sleep(0.2)
+            time.sleep(0.4)
         else:
             map_error_cnt = 0
 
@@ -648,12 +657,16 @@ def main_script():
     logger.info("读取角色配置列表...")
     logger.info(f"共有{len(role_list)}个角色...")
 
+    pause_event.wait()
+    # 检查每日弹窗
+    close_new_day_dialog(handle, x, y)
+
     pause_event.wait()  # 暂停
     # 遍历角色, 循环刷图
     for i in range(len(role_list)):
         pause_event.wait()  # 暂停
 
-        role = role_list[i]
+        role = copy.deepcopy(role_list[i])
         # 判断,从指定的角色开始,其余的跳过
         if first_role_no != -1 and (i + 1) < first_role_no:
             logger.warning(f'[跳过]-【{i + 1}】[{role.name}]...')
@@ -663,20 +676,44 @@ def main_script():
 
         if i + 1 > 20 and game_mode == 2:
             logger.warning(f'前20个每日1+1已经结束了')
+            mode_name = (
+                "白图" if game_mode == 1 else
+                "每日1+1" if game_mode == 2 else
+                "妖气追踪" if game_mode == 3 else
+                "妖怪歼灭" if game_mode == 4 else
+                "未知模式"
+            )
+            email_subject = f"{mode_name} 任务执行结束 {pathlib.Path(__file__).stem.replace('main', '').strip() if 'main' in pathlib.Path(__file__).stem else ''}"
+            email_content = email_subject
+            mail_receiver = mail_config.get("receiver")
+            if mail_receiver:
+                tool_executor.submit(lambda: (
+                    mail_sender.send_email(email_subject, email_content, mail_receiver),
+                    logger.info("任务执行结束")
+                ))
             break
 
         # 读取角色配置
-        hero_height = role.height
+        hero_height = role.height  # 高度
+        # 读取疲劳值配置
+        if enable_uniform_pl:
+            role.fatigue_reserved = uniform_default_fatigue_reserved
+        skill_images = {}
 
         # 等待加载角色完成
         time.sleep(4)
+
+        # 检查每日弹窗
+        if datetime.now().hour == 0:
+            close_new_day_dialog(handle, x, y)
 
         # # 确保展示右下角的图标
         # show_right_bottom_icon(capturer.capture(), x, y)
 
         logger.info(f'设置的拥有疲劳值: {role.fatigue_all}')
 
-        ocr_fatigue = do_ocr_fatigue_retry(handle, x, y, reader, 5)
+        # ocr_fatigue = do_ocr_fatigue_retry(handle, x, y, reader, 5)
+        ocr_fatigue = do_recognize_fatigue(capturer.capture())
         logger.info(f'识别的拥有疲劳值: {ocr_fatigue}')
         if ocr_fatigue is not None:
             if role.fatigue_all != ocr_fatigue:
@@ -686,7 +723,7 @@ def main_script():
         # 角色当前疲劳值
         current_fatigue = role.fatigue_all
         fatigue_cost = 16  # 一把消耗的疲劳值
-        if game_mode == 3 or game_mode == 4:
+        if game_mode == 3 or game_mode == 4 or game_mode == 2:
             fatigue_cost = 8
 
         logger.info(f'{role.name},拥有疲劳值:{role.fatigue_all},预留疲劳值:{role.fatigue_reserved}')
@@ -697,10 +734,11 @@ def main_script():
         # 判断1+1是否能点
         if need_fight and game_mode == 2:
             mu.do_move_and_click(x + 767, y + 542)
-            time.sleep(0.1)
+            time.sleep(0.4)
             daily_1and1_clickable = detect_daily_1and1_clickable(capturer.capture())
-            time.sleep(0.1)
+            time.sleep(0.4)
             kbu.do_press(Key.esc)
+            time.sleep(0.2)
             if not daily_1and1_clickable:
                 logger.warning("1+1点不了,跳过...")
             need_fight = daily_1and1_clickable
@@ -715,22 +753,65 @@ def main_script():
             pause_event.wait()  # 暂停
             # 默认是站在赛丽亚房间
 
+            # 识别当前职业
+            kbu.do_press('k')
+            time.sleep(2)
+            skill_panel_img = capturer.capture()
+            skill_panel_img = skill_panel_img[360:450, 700:920]
+            skill_panel_img = cv2.cvtColor(skill_panel_img, cv2.COLOR_BGRA2GRAY)
+
+            # 从role_list中找到对应的角色配置
+            find_role_config = False
+            for class_code, icon in class_icon_map.items():
+                matches = match_template(skill_panel_img, icon, threshold=0.85)
+                if len(matches) > 0:
+                    logger.info(f"当前职业编号是是: {class_code}")
+                    for job in SubClass:
+                        code = job.code
+                        if code == class_code:
+                            logger.info("识别当前职业是 " + job.name)
+                            for cc in role_list:
+                                if cc.sub_class == job:
+                                    logger.info(f"从角色配置池中找到对应的角色配置,{cc.no}-{cc.sub_class}-{cc.name}")
+                                    role_bak = role
+                                    role = cc
+                                    role.height = role_bak.height
+                                    role.fatigue_reserved = role_bak.fatigue_reserved
+                                    role.fatigue_all = role_bak.fatigue_all
+                                    find_role_config = True
+                                    break
+                            if not find_role_config and role.sub_class_auto:
+                                logger.debug("未找到对应职业，缺省配置角色，并且允许自动配置角色高度和技能")
+                                role.height = BaseClass.get_base_class(job).height
+                                role.custom_priority_skills = skill_util.default_all_skills
+                            break
+                    break
+                else:
+                    logger.debug("未识别当前职业!!")
+            logger.debug(f"最终生效职业是：序号：{role.no}-名称：{role.name}-高度：{role.height}")
+            logger.debug(f"{role}")
+            time.sleep(0.5)
+            kbu.do_press(Key.esc)
+            time.sleep(0.5)
+
+            calc_height = calc_role_height(capturer.capture(), x, y)
+            if calc_height:
+                logger.info(f"计算出的角色高度: {calc_height}，原高度：{role.height}")
+                role.height = calc_height
+                hero_height = role.height
+
+            # 获取技能栏截图
+            skill_images = get_skill_initial_images(capturer.capture())
+
             if game_mode != 2:
                 # N 点第一个
                 logger.info("传送到风暴门口,选地图...")
                 # 传送到风暴门口
                 from_sailiya_to_abyss(x, y)
-                logger.info("先向上移，保持顶到最上位置。。")
-                kbu.do_press_with_time(Key.up, 800, 50)
-                # # 让角色走到最左面，进图选择页面
-                # logger.info("再向左走，进入选择地图页面。。")
-                # kbu.do_press_with_time(Key.left, 2500, 300)
-
-                # 先向右移动一点，以防一传过来的就离得很近
-                logger.info("向右移一点，以防一传过来的就离得很近。。")
-                kbu.do_press_with_time(Key.right, 1000, 50)
-                logger.info("向左走向左走，进入选择地图页面。。")
-                kbu.do_press_with_time(Key.left, 2500, 50)
+                kbu.do_press_with_time(Key.right, 500, 50)
+                kbu.do_press_with_time(Key.left, 1000, 50)
+                kbu.do_press_with_time(Key.down, 1000, 50)
+                kbu.do_press_with_time(Key.up, 1500, 50)
                 time.sleep(0.5)
                 time.sleep(1.5)  # 先等自己移动到深渊图
 
@@ -769,17 +850,24 @@ def main_script():
         fight_count = 0
         # 角色刷完结束
         finished = False
+        exception_mail_notify_timer = None
 
         # todo 循环进图开始>>>>>>>>>>>>>>>>>>>>>>>>
         # 一直循环
         pause_event.wait()  # 暂停
-        while not finished and need_fight:  # 循环进图
+        while not finished and need_fight:  # 循环进图，再次挑战
+            if exception_mail_notify_timer:
+                exception_mail_notify_timer.cancel()
+            exception_mail_notify_timer = threading.Timer(300, mail_sender.send_email, ("刷图异常提醒", "刷图异常提醒，长时间未动，及时介入处理。", mail_config.get("receiver")))
+            exception_mail_notify_timer.start()
+            logger.debug("启动刷图异常提醒定时器")
+
             # 先要等待地图加载 todo 改动态识别
             # time.sleep(4.5)
             pause_event.wait()  # 暂停
             try:
                 t1 = time.time()
-                time.sleep(0.2)
+                time.sleep(2)  # 防止太快
                 load_map_task = tool_executor.submit(minimap_analyse, capturer)
                 load_map_success = load_map_task.result(timeout=5)
                 if load_map_success:
@@ -797,9 +885,11 @@ def main_script():
             fight_count += 1
             logger.info(f'【{role.name}】 刷图,第 {fight_count} 次，开始...')
             one_game_start = time.time()
+            mu.do_move_to(x + width / 4, y + height / 4)  # 重置鼠标位置
 
             # # 记录疲劳值
-            current_fatigue_ocr = do_ocr_fatigue_retry(handle, x, y, reader, 5)  # 识别疲劳值
+            # current_fatigue_ocr = do_ocr_fatigue_retry(handle, x, y, reader, 5)  # 识别疲劳值
+            current_fatigue_ocr = do_recognize_fatigue(capturer.capture())  # 识别疲劳值
             logger.info(f'当前还有疲劳值(识别): {current_fatigue_ocr}')
 
             global continue_pressed
@@ -870,7 +960,7 @@ def main_script():
 
             logger.info(f'准备打怪..')
 
-            # todo 循环打怪过图 循环开始////////////////////////////////
+            # todo 循环打怪过图，过房间 循环开始////////////////////////////////
             fq = FixedLengthQueue(max_length=30)
             room_idx_list = FixedLengthQueue(max_length=100)
             stuck_room_idx = None
@@ -888,9 +978,10 @@ def main_script():
             hero_stuck_pos = {}  # 卡住的位置 ((r,c),[(x,y),(x,y)])
             die_time = 0
             in_boss_room = False
+            delay_break = 0
 
             frame_time = time.time()
-            while True:  # 循环打怪过图
+            while True:  # 循环打怪过图，过房间
                 # 限制处理速率
                 if max_fps:
                     if time.time() - frame_time < 1.0 / max_fps:
@@ -902,6 +993,9 @@ def main_script():
 
                 # 截图
                 img0 = capturer.capture()
+                if img0 is None:
+                    logger.error("截图失败")
+                    continue
                 
                 # 识别
                 cv_det_task = None
@@ -957,7 +1051,7 @@ def main_script():
                     loot_xywh_list = []
                     gold_xywh_list = []
 
-                if sss_exist or continue_exist or shop_exist or shop_mystery_exist:
+                if sss_exist or continue_exist or shop_exist:
                     # logger.debug(f"出现翻牌{sss_exist}，再次挑战了{continue_exist}")
                     if not sss_appeared:
                         sss_appeared = True
@@ -971,7 +1065,7 @@ def main_script():
                         logger.info(f"出现boss了")
                         boss_appeared = True
                         in_boss_room = True
-                        
+
                 if cv_det_task:
                     cv_det = cv_det_task.result()
                     if cv_det and cv_det["death"]:
@@ -1036,9 +1130,9 @@ def main_script():
                             elif hero_xywh[0] < img0.shape[1] * 1 // 5 and stand_on_door[0] < img0.shape[1] * 1 // 5:
                                 logger.debug("人在左边2")
                                 random_direct = "RIGHT"
-                                if hero_xywh[1] < img0.shape[0] * 3 // 5:
+                                if 300 < hero_xywh[1] < 390:
                                     logger.debug("人在左边2且上边")
-                                    random_direct = random.choice(['RIGHT', 'RIGHT_DOWN', 'RIGHT_DOWN'])
+                                    random_direct = random.choice(['RIGHT', 'RIGHT_DOWN'])
                             elif hero_xywh[0] > img0.shape[1] * 4 // 5:
                                 logger.debug("人在右边")
                                 random_direct = random.choice(list(filter(lambda x1: x1 != "RIGHT" and x1 != kbd_current_direction, kbu.single_direct)))
@@ -1097,7 +1191,21 @@ def main_script():
                                                     if hero_xywh[0] < 100 and door_xywh_list and len(door_xywh_list) == 1 and door_xywh_list[0][0] < 100:
                                                         logger.debug("左侧处理")
                                                         random_direct = random.choice(list(filter(lambda x1: x1 != get_opposite_direction(previous) and x1 != kbd_current_direction and x1 not in ["DOWN", "LEFT"], kbu.single_direct)))
+                                                    elif 882 < hero_xywh[0] < 888 and 300 < hero_xywh[1] < 305 and kbd_current_direction == "DOWN" and previous == "RIGHT":
+                                                        logger.debug("人可能被卡在右上了")
+                                                        random_direct = "LEFT_DOWN"
+                                                    elif hero_xywh[0] > 888 and previous == "RIGHT":
+                                                        logger.debug("已经向右走到底了，回头")
+                                                        random_direct = random.choice(["LEFT", "LEFT_DOWN", "LEFT_UP"])
+                                                        mover.move(target_direction=random_direct)
+                                                        time.sleep(round(random.uniform(0.6, 0.8), 1))
+                                                    elif hero_xywh[0] < 179 and previous == "LEFT":
+                                                        logger.debug("已经向左到底了，回头")
+                                                        random_direct = random.choice(["RIGHT", "RIGHT_DOWN", "RIGHT_UP"])
+                                                        mover.move(target_direction=random_direct)
+                                                        time.sleep(round(random.uniform(0.6, 0.8), 1))
                                                     else:
+                                                        logger.debug("else 了", previous)
                                                         random_direct = random.choice(list(filter(lambda x1: x1 != get_opposite_direction(previous) and x1 != kbd_current_direction, kbu.single_direct)))
                                                     break
                                         else:
@@ -1105,6 +1213,10 @@ def main_script():
                                             previous = path_stack[-1][1]
                                             random_direct = random.choice(
                                                 list(filter(lambda x1: x1 != get_opposite_direction(path_stack[-1][1]) and x1 != kbd_current_direction, kbu.single_direct)))
+                                            if hero_xywh[0] < 70:
+                                                random_direct = random.choice(["RIGHT", random_direct])
+                                            elif hero_xywh[0] > 950:
+                                                random_direct = random.choice(["LEFT", random_direct])
 
                                         if hero_xywh[1] < 400 and kbd_current_direction == "UP" and previous == "RIGHT" and hero_xywh[0] < 630:
                                             logger.debug("走到底，上小卡处理1。。")
@@ -1481,10 +1593,12 @@ def main_script():
 
                         skill_name = None
                         if role.powerful_skills and (boss_xywh_list):
-                            skill_name = skill_util.suggest_skill_powerful(role, img0)
+                            # skill_name = skill_util.suggest_skill_powerful(role, img0)
+                            skill_name = skill_util.get_available_skill_from_list_by_match(skills=role.powerful_skills, img0=img0, skill_images=skill_images)
                         if skill_name is None:
                             # 推荐技能
-                            skill_name = skill_util.suggest_skill(role, img0)
+                            # skill_name = skill_util.suggest_skill(role, img0)
+                            skill_name = skill_util.suggest_skill_by_img_match(role, img0, skill_images)
                         skill_util.cast_skill(skill_name)
                         # 小等一下 比如等怪死
                         if skill_name == 'x':
@@ -1615,19 +1729,19 @@ def main_script():
                             if (
                                     (door[0] <= material_box[0] <= hero_xywh[0] or door[0] >= material_box[0] >= hero_xywh[0])
                                     and (
-                                        door[1] <= material_box[1] <= hero_xywh[1]
-                                        or door[1] >= material_box[1] >= hero_xywh[1]
-                                        or (abs(door[1] - material_box[1]) < 100 and abs(door[1] - hero_xywh[1]) < 100 and abs(material_box[1] - hero_xywh[1]) < 100)
-                                    )
+                                    (door[1] <= material_box[1] <= hero_xywh[1] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                    or (door[1] >= material_box[1] >= hero_xywh[1] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                    or (abs(door[1] - material_box[1]) < 100 and abs(door[1] - hero_xywh[1]) < 100 and abs(material_box[1] - hero_xywh[1]) < 100)
+                            )
                             ):
                                 # logger.error(f"门:{door}, 材料：{material_box}， 角色：{hero_xywh}")
                                 door_is_near = True
                             elif (
                                     (door[1] <= material_box[1] <= hero_xywh[1] or door[1] >= material_box[1] >= hero_xywh[1])
                                     and (
-                                        door[0] <= material_box[0] <= hero_xywh[0]
-                                        or door[0] >= material_box[0] >= hero_xywh[0]
-                                        or (abs(door[0] - material_box[0]) < 100 and abs(door[0] - hero_xywh[0]) < 100 and abs(material_box[0] - hero_xywh[0]) < 100)
+                                            (door[0] <= material_box[0] <= hero_xywh[0] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                            or (door[0] >= material_box[0] >= hero_xywh[0] and abs(material_box[0] - hero_xywh[0]) < 170)
+                                            or (abs(door[0] - material_box[0]) < 100 and abs(door[0] - hero_xywh[0]) < 100 and abs(material_box[0] - hero_xywh[0]) < 100)
                                     )
                             ):
                                 # logger.error(f"门:{door}, 材料：{material_box}， 角色：{hero_xywh}")
@@ -1701,8 +1815,20 @@ def main_script():
                     # 不管了,全部释放掉
                     mover._release_all_keys()
 
+                    aolakou = False
+                    if game_mode == 2 or game_mode == 1:
+                        aolakou = detect_aolakou(results[0].orig_img)
+                    # todo 前多少角色买奥拉扣
+                    if aolakou and role.no <= 0:
+                        mu.do_move_to(x + 337, y + 209)
+                        time.sleep(0.2)
+                        mu.do_click(Button.left)
+                        time.sleep(0.2)
+                        mu.do_click(Button.left)
+                        time.sleep(0.2)
+
                     # 如果商店开着,需要esc关闭
-                    if shop_mystery_exist or shop_exist:
+                    if shop_mystery_exist or shop_exist or aolakou:
                         if shop_mystery_exist:
                             # cv2.imwrite(f'./shop_imgs/mystery_Shop_{datetime.fromtimestamp(time.time()).strftime("%Y%m%d_%H%M%S")}.jpg', img0)
                             time.sleep(0.5)
@@ -1713,10 +1839,23 @@ def main_script():
                         time.sleep(0.1)
                         continue
 
+                    try_again_conflict = detect_try_again_conflict(capturer.capture())
+                    if try_again_conflict:
+                        logger.warning("再次挑战，有冲突，准备ESC！！！")
+                        kbu.do_press(Key.esc)
+                        time.sleep(0.3)
+                        logger.warning("再次挑战，有冲突，已经ESC！！！")
+                        continue
+
                     # 不存在掉落物了,就再次挑战
                     if not loot_xywh_list and not gold_xywh_list:
                         logger.warning("出现再次挑战,并且没有掉落物了,终止")
                         # time.sleep(3)  # 等待加载地图
+                        if delay_break < 3:
+                            # 延迟break，终止掉当前刷一次图的循环，多花0.3秒再次进行检测，处理商店和掉落物
+                            delay_break = delay_break + 1
+                            time.sleep(0.1)
+                            continue
 
                         break  # 终止掉当前刷一次图的循环
 
@@ -1739,13 +1878,13 @@ def main_script():
                     if not card_appear_time:
                         card_appear_time = time.time()
 
-                        # 如果商店开着,需要esc关闭
+                    # 如果商店开着,需要esc关闭
                     if shop_mystery_exist:
                         # cv2.imwrite(f'./shop_imgs/mystery_Shop_{datetime.fromtimestamp(time.time()).strftime("%Y%m%d_%H%M%S")}.jpg', img0)
                         time.sleep(0.5)
                         process_mystery_shop(capturer.capture(), x, y, buy_tank_type, buy_bell_ticket, buy_shanshanming)  # 重新截图，防止前面截的帧有干扰不清晰
 
-                    logger.info("翻牌时有神秘商店，处理完毕")
+                        logger.info("翻牌时有神秘商店，处理完毕")
 
                     if time.time() - card_appear_time > 0.5:
                         if not card_esc_time:
@@ -1857,7 +1996,8 @@ def main_script():
 
             pause_event.wait()  # 暂停
             # 疲劳值判断
-            current_fatigue = do_ocr_fatigue_retry(handle, x, y, reader, 5)
+            # current_fatigue = do_ocr_fatigue_retry(handle, x, y, reader, 5)
+            current_fatigue = do_recognize_fatigue(capturer.capture())
             if role.fatigue_reserved > 0 and (current_fatigue - fatigue_cost) < role.fatigue_reserved:
                 # 再打一把就疲劳值就不够预留的了
                 logger.info(f'再打一把就疲劳值就不够预留的{role.fatigue_reserved}了')
@@ -1866,7 +2006,7 @@ def main_script():
                     time.sleep(1.6)
                 # 返回城镇
                 kbu.do_press(dnf.key_return_to_town)
-                time.sleep(2)
+                time.sleep(5)
                 finished = True
                 # break
 
@@ -1878,7 +2018,7 @@ def main_script():
                     time.sleep(1.6)
                 # 返回城镇
                 kbu.do_press(dnf.key_return_to_town)
-                time.sleep(2)
+                time.sleep(5)
                 finished = True
                 # break
 
@@ -1894,7 +2034,7 @@ def main_script():
                     time.sleep(1.6)
                 # 返回城镇
                 kbu.do_press(dnf.key_return_to_town)
-                time.sleep(2)
+                time.sleep(5)
                 finished = True
             else:
                 # 按下再次挑战
@@ -1919,7 +2059,8 @@ def main_script():
 
         time_diff = datetime.now() - oen_role_start_time
         logger.warning(f'第【{i + 1}】个角色【{role.name}】刷图打怪循环结束...总计耗时: {(time_diff.total_seconds() / 60):.1f} 分钟')
-
+        if exception_mail_notify_timer:
+            exception_mail_notify_timer.cancel()
         # 刷图流程结束<<<<<<<<<<
         # # 展示掉右下角的图标
         # show_right_bottom_icon(capturer.capture(), x, y)
@@ -1928,6 +2069,10 @@ def main_script():
         # 如果刷图了,则完成每日任务,整理背包
         if fight_count > 0:
             logger.info('刷了图之后,进行整理....')
+            # 检查每日弹窗
+            if datetime.now().hour == 0:
+                close_new_day_dialog(handle, x, y)
+
             pause_event.wait()  # 暂停
 
             # 瞬移到赛丽亚房间
@@ -1935,17 +2080,25 @@ def main_script():
 
             pause_event.wait()  # 暂停
             # 完成每日任务
-            finish_daily_challenge_by_all(x, y, game_mode == 2)
+            if game_mode == 2 or ((game_mode == 3 or game_mode == 1) and i < 20):
+                finish_daily_challenge_by_all(x, y, game_mode == 2)
 
             # pause_event.wait()  # 暂停
             # # 一键出售装备,给赛丽亚
             # sale_equipment_to_sailiya()
 
+            # 收邮件
+            if datetime.now().weekday() in dnf.receive_mail_days:
+                logger.info('日期匹配，今日触发收邮件')
+                for _ in range(3):  # 3次吧
+                    time.sleep(1)
+                    have_mail = receive_mail(capturer.capture(), x, y)
+                    if not have_mail:
+                        break
+
             pause_event.wait()  # 暂停
             # 转移材料到账号金库
             transfer_materials_to_account_vault(x, y)
-            # 垃圾直播活动
-            activity_live(x, y)
 
         pause_event.wait()  # 暂停
         # 准备重新选择角色
@@ -1962,10 +2115,9 @@ def main_script():
 
             pause_event.wait()  # 暂停
             # 鼠标移动到选择角色，点击 偏移量（1038,914）
-            # mu.do_smooth_move_to(x + 607, y + 576)
-            mu.do_smooth_move_to(x + 506, y + 504)
-            time.sleep(0.2)
-            mu.do_click(Button.left)
+            img_menu = capturer.capture()
+            template_choose_role = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/choose_role.png'), cv2.IMREAD_GRAYSCALE)
+            match_and_click(img_menu, x, y, template_choose_role, (506, 504))
             # 等待加载角色选择页面
             time.sleep(5)
 
@@ -1976,6 +2128,21 @@ def main_script():
             time.sleep(0.2)
         else:
             logger.warning("已经刷完最后一个角色了，结束脚本")
+            mode_name = (
+                "白图" if game_mode == 1 else
+                "每日1+1" if game_mode == 2 else
+                "妖气追踪" if game_mode == 3 else
+                "妖怪歼灭" if game_mode == 4 else
+                "未知模式"
+            )
+            email_subject = f"{mode_name} 任务执行结束 {pathlib.Path(__file__).stem.replace('main', '').strip() if 'main' in pathlib.Path(__file__).stem else ''}"
+            email_content = email_subject
+            mail_receiver = mail_config.get("receiver")
+            if mail_receiver:
+                tool_executor.submit(lambda: (
+                    mail_sender.send_email(email_subject, email_content, mail_receiver),
+                    logger.info("任务执行结束")
+                ))
             break
 
 
@@ -2018,6 +2185,8 @@ logger.info(f'总计耗时: {(time_delta.total_seconds() / 60):.1f} 分钟')
 if not stop_be_pressed and quit_game_after_finish:
     logger.info("正在退出游戏...")
     clik_to_quit_game(handle, x, y)
+    time.sleep(5)
+    window_utils.kill_process_by_hwnd(handle)  # 如果没退出，就强杀掉进程
     time.sleep(5)
 
 logger.info("python主线程已停止.....")

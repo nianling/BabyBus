@@ -3,46 +3,55 @@
 __author__ = "廿陵 <wemean66@gmail.com> (GitHub: @nianling)"
 __version__ = '1.0'
 
+import os
+import random
+from datetime import datetime
 import time
 
 import cv2
 import cv2 as cv
 import numpy as np
 from pynput.keyboard import Key
+from skimage.metrics import structural_similarity as ssim
 
 from dnf.stronger.logger_config import logger
 from dnf.stronger.role_config import RoleConfig, Skill
 from utils import keyboard_utils as kbu
+import config as config_
+from utils.utilities import match_template
+from dnf.stronger.role_config import RoleConfig
+from dnf.dnf_config import skill_hotkeys
 
 # x1, y1 = 527, 645
 # x2, y2 = 770, 712
 x1, y1 = 433, 533
 x2, y2 = 648, 593
 
-# skill_height = int((y2 - y1) / 2)
-# skill_width = int((x2 - x1) / 7)
 skill_height = 28
 skill_width = 28
 
 skill_dict = {
-    "q": (x1, y1),
-    "w": (x1 + skill_width, y1),
-    "e": (x1 + skill_width * 2, y1),
-    "r": (x1 + skill_width * 3, y1),
-    "t": (x1 + skill_width * 4, y1),
-    "v": (x1 + skill_width * 5, y1),
-    # "CTRL": (x1 + skill_width * 6, y1),
-    Key.ctrl_l: (x1 + skill_width * 6, y1),
+    skill_hotkeys[0]: (x1, y1),
+    skill_hotkeys[1]: (x1 + skill_width, y1),
+    skill_hotkeys[2]: (x1 + skill_width * 2, y1),
+    skill_hotkeys[3]: (x1 + skill_width * 3, y1),
+    skill_hotkeys[4]: (x1 + skill_width * 4, y1),
+    skill_hotkeys[5]: (x1 + skill_width * 5, y1),
+    skill_hotkeys[6]: (x1 + skill_width * 6, y1),
 
-    "a": (x1, y1 + skill_height),
-    "s": (x1 + skill_width, y1 + skill_height),
-    "d": (x1 + skill_width * 2, y1 + skill_height),
-    "f": (x1 + skill_width * 3, y1 + skill_height),
-    "g": (x1 + skill_width * 4, y1 + skill_height),
-    # "TAB": (x1 + skill_width * 5, y1 + skill_height),
-    Key.tab: (x1 + skill_width * 5, y1 + skill_height),
-    "h": (x1 + skill_width * 6, y1 + skill_height)
+    skill_hotkeys[7]: (x1, y1 + skill_height),
+    skill_hotkeys[8]: (x1 + skill_width, y1 + skill_height),
+    skill_hotkeys[9]: (x1 + skill_width * 2, y1 + skill_height),
+    skill_hotkeys[10]: (x1 + skill_width * 3, y1 + skill_height),
+    skill_hotkeys[11]: (x1 + skill_width * 4, y1 + skill_height),
+    skill_hotkeys[12]: (x1 + skill_width * 5, y1 + skill_height),
+    skill_hotkeys[13]: (x1 + skill_width * 6, y1 + skill_height)
 }
+
+# 默认的所有技能
+default_all_skills = []
+for hot_key in skill_dict.keys():
+    default_all_skills.append(Skill(hot_key=hot_key, animation_time=0.5))
 
 
 # 计算给定图像 img 中亮度高于阈值127的像素的比例
@@ -83,7 +92,7 @@ def skill_ready(skill_name, img):
     if skill_name == "x":
         return True
     skill_img = img[skill_dict[skill_name][1]: skill_dict[skill_name][1] + skill_height,
-                    skill_dict[skill_name][0]: skill_dict[skill_name][0] + skill_width]
+    skill_dict[skill_name][0]: skill_dict[skill_name][0] + skill_width]
     # cv.imshow("skill", skill_img)
     # cv.waitKey(0)
     s = score(skill_img)
@@ -136,6 +145,8 @@ def skill_ready_warm_colors(skill_name, img):
     x = 434 + (28 + 3) * (index % 7)
     y = 534 + (28 + 3) * (index // 7)
     skill_img = img[y:y + skill_height, x:x + skill_width]
+    # 扣去顶部和底部带字的部分
+    # skill_img = skill_img[7:-7, :]
 
     warm_ratio = score_by_warm(skill_img)
 
@@ -143,6 +154,8 @@ def skill_ready_warm_colors(skill_name, img):
     is_ready = warm_ratio > 0.2
 
     # print(f"技能 {skill_name} - 暖色调比例: {warm_ratio:.2f}")
+    # cv2.imwrite(f'./skill{datetime.fromtimestamp(time.time()).strftime("%Y%m%d_%H%M%S")}.jpg', skill_img)
+    # cv2.imshow('a',skill_img)
     return is_ready
 
 
@@ -150,32 +163,9 @@ def suggest_skill(role: RoleConfig, img0):
     # 随机一个技能名
     skill_name = 'x'
 
-    for s in role.custom_priority_skills:
-        # logger.debug(f"CD判断:【{s}】")
-        if isinstance(s, str) or isinstance(s, Key):
-            if skill_ready_warm_colors(s, img0):
-                logger.debug(f"字符串技能:【{s}】 已恢复cd(识别)")
-                return s
-        elif isinstance(s, list):
-            return s
-        elif isinstance(s, Skill):
-            if s.cd:
-                t = time.time()
-                if t - s.cd > s.recent_use_time + 0.1:
-                    logger.debug(f"Skill:【{s.name}】 已恢复cd(计算)")
-                    # s.recent_use_time = t  # 更新最近使用时间
-                    return s
-                else:
-                    logger.debug(f'{s}未恢复计算cd,再找')
-            elif len(s.command) == 1 or s.hot_key is not None:
-                sname = s.hot_key if s.hot_key is not None else s.command[0]
-                if skill_ready_warm_colors(sname, img0):
-                    logger.debug(f"Skill:【{s.name}】 已恢复cd(识别)")
-                    return s
-                else:
-                    logger.debug(f'{s}未恢复识别cd,再找')
-            logger.debug('未恢复cd,再找')
-
+    checked_skill_name = search_available_skill_from_list(skills=role.custom_priority_skills, img0=img0)
+    if checked_skill_name:
+        return checked_skill_name
     logger.debug("自定义技能 没有合适的!!!")
     for _ in range(10):
         skill_name = role.candidate_hotkeys[int(np.random.randint(len(role.candidate_hotkeys), size=1)[0])]
@@ -188,8 +178,64 @@ def suggest_skill(role: RoleConfig, img0):
     return skill_name
 
 
+def check_one_skill_cd(skill_key, img, skill_images):
+    if skill_key == "x":
+        return True
+    # x, y = skill_dict[skill_name][0], skill_dict[skill_name][1]
+    keys_list = list(skill_dict.keys())
+    index = keys_list.index(skill_key)
+    x = 434 + (28 + 3) * (index % 7)
+    y = 534 + (28 + 3) * (index // 7)
+    skill_img = img[y:y + skill_height, x:x + skill_width]
+    init_skill_img = skill_images[skill_key]
+    if init_skill_img is None:
+        # logger.debug(f'按键【{skill_key}】是空技能')
+        return False
+    gray = cv2.cvtColor(skill_img, cv2.COLOR_BGR2GRAY)
+    similarity_score = ssim(init_skill_img, gray)
+    # logger.debug(f'技能【{skill_key}】相似度:【{similarity_score}】')
+
+    # combined_img = np.hstack((init_skill_img, gray))
+    # cv2.imwrite(f'./skill_img/debug_skill_{datetime.fromtimestamp(time.time()).strftime("%Y%m%d_%H%M%S")}_{skill_key}_[{similarity_score}].jpg', combined_img)
+
+    if similarity_score > 0.92:
+        return True
+    return False
+
+
+def suggest_skill_by_img_match(role: RoleConfig, img0, skill_images):
+    # 随机一个技能名
+    skill_name = 'x'
+    ok_skill = get_available_skill_from_list_by_match(skills=role.custom_priority_skills, img0=img0, skill_images=skill_images)
+    if ok_skill:
+        return ok_skill
+    logger.debug("查找技能 没有合适的!!!")
+
+    # 候选
+    if role.candidate_hotkeys:
+        for _ in range(len(role.candidate_hotkeys)):
+            candidate_skill_name = random.choice(role.candidate_hotkeys)
+            if candidate_skill_name == 'x':
+                skill_name = candidate_skill_name
+                break
+            if check_one_skill_cd(candidate_skill_name, img0, skill_images):
+                skill_name = candidate_skill_name
+                break
+    return skill_name
+
+
 def suggest_skill_powerful(role: RoleConfig, img0):
-    for s in role.powerful_skills:
+    return search_available_skill_from_list(skills=role.powerful_skills, img0=img0)
+
+
+def search_available_skill_from_list(skills, img0):
+    """
+    从候选技能列表中找已经恢复CD的技能，（通过计算暖色调像素判断）
+    :param skills:
+    :param img0:
+    :return:
+    """
+    for s in skills:
         if isinstance(s, str) or isinstance(s, Key):
             if skill_ready_warm_colors(s, img0):
                 logger.debug(f"字符串技能:【{s}】 已恢复cd(识别)")
@@ -212,6 +258,57 @@ def suggest_skill_powerful(role: RoleConfig, img0):
     return None
 
 
+def get_available_skill_from_list_by_match(skills, img0, skill_images):
+    """
+    从候选技能列表中找已经恢复CD的技能，（通过技能图片对比判断）
+    :param skills:
+    :param img0:
+    :param skill_images:
+    :return:
+    """
+    if skills is None or len(skills) == 0:
+        # logger.debug("角色池配置-角色技能列表为空")
+        # todo 配置 随机 或者默认第一排第二排顺序 或者自定义默认顺序
+        skills = default_all_skills
+
+    for s in skills:
+        # logger.debug(f"CD判断:【{s}】")
+        if isinstance(s, str) or isinstance(s, Key):
+            if check_one_skill_cd(s, img0, skill_images):
+                # logger.debug(f"字符串技能:【{s}】 已恢复cd(识别)")
+                return s
+        elif isinstance(s, list):
+            return s
+        elif isinstance(s, Skill):
+            if s.cd:
+                t = time.time()
+                if t - s.cd > s.recent_use_time + 0.1:
+                    # logger.debug(f"Skill:【{s.name}】 已恢复cd(计算)")
+                    ...
+                    return s
+                else:
+                    # logger.debug(f'{s}未恢复计算cd,再找')
+                    ...
+            elif s.hotkey_cd_command_cast and s.hot_key and s.command:  # 需要用快捷键识别CD，但是又需要多个指令操作的情况
+                sname = s.hot_key
+                if check_one_skill_cd(sname, img0, skill_images):
+                    # logger.debug(f"Skill:【{s.name}】 已恢复cd(识别指令)")
+                    return s
+                else:
+                    # logger.debug(f'{s}未恢复识别cd,再找')
+                    ...
+            elif len(s.command) == 1 or s.hot_key is not None:
+                sname = s.hot_key if s.hot_key is not None else s.command[0]
+                if check_one_skill_cd(sname, img0, skill_images):
+                    # logger.debug(f"Skill:【{s.name}】 已恢复cd(识别)")
+                    return s
+                else:
+                    # logger.debug(f'{s}未恢复识别cd,再找')
+                    ...
+            # logger.debug('未恢复cd,再找')
+    return None
+
+
 def cast_skill(s):
     """
     放技能
@@ -228,7 +325,7 @@ def cast_skill(s):
     elif isinstance(s, Skill):
         if s.cd:
             s.recent_use_time = time.time()  # 更新最近使用时间
-        if s.hot_key:
+        if s.hot_key and not s.hotkey_cd_command_cast:
             kbu.do_press(s.hot_key)
         elif s.command:
             if s.concurrent:
@@ -245,8 +342,35 @@ def cast_skill(s):
     else:
         time.sleep(0.6)
 
+
+def get_skill_initial_images(full_image):
+    """
+    初始化技能图片
+    :param full_image:
+    :return:
+    """
+    skill_images = {}
+    # 遍历技能快捷栏
+    for index, key in enumerate(skill_dict.keys()):
+        _x = 434 + (28 + 3) * (index % 7)
+        _y = 534 + (28 + 3) * (index // 7)
+        # 扣出技能格子图片
+        skill_img = full_image[_y:_y + skill_height, _x:_x + skill_width]
+        # cv2.imwrite(f"skill_{index}.png", skill_img)
+        # 灰度化
+        skill_img = cv2.cvtColor(skill_img, cv2.COLOR_BGR2GRAY)
+        empty_skill = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/empty_skill.png'), cv2.IMREAD_GRAYSCALE)
+        # 存字典
+        if match_template(skill_img, empty_skill, threshold=0.85):
+            skill_images[key] = None
+            logger.debug(f"存在空技能:【{key}】")
+        else:
+            skill_images[key] = skill_img
+    return skill_images
+
+
 if __name__ == '__main__':
-    img = cv.imread("./ff8.png")
+    # img = cv.imread("./ff8.png")
     # cv.imshow("img", img)
     # cv.waitKey(0)
 
@@ -274,18 +398,37 @@ if __name__ == '__main__':
     # print(skill_ready2(Key.tab, img))
     # print(skill_ready2('h', img))
 
-    print(skill_ready_warm_colors('q', img))
-    print(skill_ready_warm_colors('w', img))
-    print(skill_ready_warm_colors('e', img))
-    print(skill_ready_warm_colors('r', img))
-    print(skill_ready_warm_colors('t', img))
-    print(skill_ready_warm_colors('v', img))
-    print(skill_ready_warm_colors(Key.ctrl_l, img))
+    # print(skill_ready_warm_colors('q', img))
+    # print(skill_ready_warm_colors('w', img))
+    # print(skill_ready_warm_colors('e', img))
+    # print(skill_ready_warm_colors('r', img))
+    # print(skill_ready_warm_colors('t', img))
+    # print(skill_ready_warm_colors('v', img))
+    # print(skill_ready_warm_colors(Key.ctrl_l, img))
+    #
+    # print(skill_ready_warm_colors('a', img))
+    # print(skill_ready_warm_colors('s', img))
+    # print(skill_ready_warm_colors('d', img))
+    # print(skill_ready_warm_colors('f', img))
+    # print(skill_ready_warm_colors('g', img))
+    # print(skill_ready_warm_colors(Key.tab, img))
+    # print(skill_ready_warm_colors('h', img))
 
-    print(skill_ready_warm_colors('a', img))
-    print(skill_ready_warm_colors('s', img))
-    print(skill_ready_warm_colors('d', img))
-    print(skill_ready_warm_colors('f', img))
-    print(skill_ready_warm_colors('g', img))
-    print(skill_ready_warm_colors(Key.tab, img))
-    print(skill_ready_warm_colors('h', img))
+    imgfull_for_skill = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-222758.png')
+    skills = get_skill_initial_images(imgfull_for_skill)
+    img = cv2.imread(r'D:\win\Users\nianling\Desktop\dnf\fatigue\QQ20250718-224426.png')
+
+    print('q', check_one_skill_cd('q', img, skills))
+    print('w', check_one_skill_cd('w', img, skills))
+    print('e', check_one_skill_cd('e', img, skills))
+    print('r', check_one_skill_cd('r', img, skills))
+    print('t', check_one_skill_cd('t', img, skills))
+    print('v', check_one_skill_cd('v', img, skills))
+    print('ctrl', check_one_skill_cd(Key.ctrl_l, img, skills))
+    print('a', check_one_skill_cd('a', img, skills))
+    print('s', check_one_skill_cd('s', img, skills))
+    print('d', check_one_skill_cd('d', img, skills))
+    print('f', check_one_skill_cd('f', img, skills))
+    print('g', check_one_skill_cd('g', img, skills))
+    print('tab', check_one_skill_cd(Key.tab, img, skills))
+    print('h', check_one_skill_cd('h', img, skills))
