@@ -645,6 +645,9 @@ def goto_white_map_level(x, y, press_cnt=2):
     mu.do_click(Button.left)
     time.sleep(0.2)
 
+    # 可能存在的1+1情况也强行进入，先不处理了
+    kbu.do_press(Key.space)
+
     time.sleep(2)
 
 
@@ -1042,6 +1045,7 @@ def receive_mail(img, x, y):
             kbu.do_press(Key.esc)
 
         time.sleep(0.2)
+        return have_mail
     except Exception as e:
         logger.error('领邮件出错', e)
 
@@ -1052,17 +1056,21 @@ def close_new_day_dialog(handle, x, y):
     检测时机：脚本开始，换角色，出图后，
     :return:
     """
-    full_screen = window_utils.capture_window_BGRX(handle)
-    template_btn_close = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/dialog-btn-close.png'), cv2.IMREAD_GRAYSCALE)
-    matched1 = match_and_click(full_screen, x, y, template_btn_close, None)
-    if matched1:
-        logger.info("关闭对话框了")
-
-    if not matched1:
-        logger.info("准备关闭对话框x")
+    for _ in range(3):
         full_screen = window_utils.capture_window_BGRX(handle)
-        template_btn_x = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/dialog-btn-X.png'), cv2.IMREAD_GRAYSCALE)
-        match_and_click(full_screen, x, y, template_btn_x, None)
+        template_btn_close = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/dialog-btn-close.png'), cv2.IMREAD_GRAYSCALE)
+        matched1 = match_and_click(full_screen, x, y, template_btn_close, None)
+        if matched1:
+            logger.info("关闭对话框了")
+
+        if not matched1:
+            logger.info("准备关闭对话框x")
+            full_screen = window_utils.capture_window_BGRX(handle)
+            template_btn_x = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/dialog-btn-X.png'), cv2.IMREAD_GRAYSCALE)
+            matched1 = match_and_click(full_screen, x, y, template_btn_x, None)
+            if not matched1:
+                logger.info("未找到[x]，没有对话框，结束")
+                return
 
 
 template_using_mystery_shop = cv2.imread(os.path.normpath(f'{config_.project_base_path}/assets/img/using_mystery_shop.png'), cv2.IMREAD_GRAYSCALE)

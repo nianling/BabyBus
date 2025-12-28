@@ -555,6 +555,10 @@ def main_script():
             kbu.do_press(Key.esc)
             time.sleep(0.5)
 
+            mu.do_move_to(x + 561, y + 434)
+            time.sleep(0.2)
+            mu.do_click(Button.right)
+            time.sleep(1)
             calc_height = calc_role_height(capturer.capture(), x, y)
             if calc_height:
                 logger.info(f"计算出的角色高度: {calc_height}，原高度：{role.height}")
